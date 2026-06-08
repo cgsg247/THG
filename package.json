@@ -1,0 +1,24 @@
+{
+  "name": "thg",
+  "version": "1.0.0",
+  "description": "",
+  "license": "ISC",
+  "author": "AA3",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "dev": "rollup -c -w",
+    "build": "NODE_ENV=production rollup -c"
+  },
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^29.0.3",
+    "@rollup/plugin-node-resolve": "^16.0.3",
+    "@rollup/plugin-terser": "^1.0.0",
+    "@types/three": "^0.184.1",
+    "rollup": "^4.61.1"
+  },
+  "dependencies": {
+    "@dimforge/rapier3d-compat": "^0.19.3",
+    "three": "^0.184.0"
+  }
+}
