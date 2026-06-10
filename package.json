@@ -8,7 +8,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "rollup -c -w",
-    "build": "NODE_ENV=production rollup -c"
+    "build": "NODE_OPTIONS=--max-old-space-size=4096 rollup -c"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^29.0.3",
@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.19.3",
-    "three": "^0.184.0"
+    "three": "^0.184.0",
+    "tweakpane": "^4.0.5"
   }
 }

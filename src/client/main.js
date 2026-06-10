@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
 import RAPIER from '@dimforge/rapier3d-compat';
+import { Pane } from 'tweakpane';
+import { loadBackrooms } from './model_load.js';
 
 RAPIER.init({}).then(() => {
     runGame(RAPIER);
@@ -16,6 +18,9 @@ function runGame(RAPIER) {
     const scene = new THREE.Scene();
     scene.background = new THREE.Color('#050505');
 
+    // Создание панели Tweakpane
+    const pane = new Pane('Geometry control', document.getElementById('panel'));
+
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 
     // 3. Рендерер и тени
@@ -25,7 +30,39 @@ function runGame(RAPIER) {
     renderer.shadowMap.type = THREE.PCFShadowMap;
     document.body.appendChild(renderer.domElement);
 
-    // 4. Освещение (Направленный свет + слабый эмбиент)
+    // Загрузка модели окружения (Backrooms)
+    loadBackrooms(scene, './assets/models/original_backrooms.glb');
+
+    const flashlight = new THREE.SpotLight(0xffeedd);
+    flashlight.intensity = 3.0;
+    flashlight.distance = 20;
+    flashlight.angle = 0.6;       // узкий конус
+    flashlight.penumbra = 0.5;    // мягкий край
+    flashlight.decay = 1.0;       // быстрое затухание
+    flashlight.castShadow = true;
+    flashlight.shadow.mapSize.width = 1024;
+    flashlight.shadow.mapSize.height = 1024;
+    flashlight.shadow.bias = -0.0001;
+
+    // Цель для фонарика (светит вперёд)
+    const flashlightTarget = new THREE.Object3D();
+    flashlightTarget.position.set(0, 0, 5);
+    camera.add(flashlightTarget);
+    flashlight.target = flashlightTarget;
+
+    // Добавляем фонарик на камеру
+    camera.add(flashlight);
+
+    // Маленький свет вокруг игрока (мягкое свечение)
+    const playerGlow = new THREE.PointLight(0x886644, 0.2, 8);
+    playerGlow.castShadow = false;
+    camera.add(playerGlow);
+
+    console.log('Фонарик добавлен на камеру');
+    console.log('Позиция фонарика:', flashlight.position);
+    console.log('Цель фонарика:', flashlight.target.position);
+
+    // Освещение (Направленный свет + слабый эмбиент)
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.05);
     scene.add(ambientLight);
 
@@ -93,7 +130,7 @@ function runGame(RAPIER) {
     world.createCollider(playerColliderDesc, playerBody);
 
     // Подключаем управление мышью от первого лица
-    const controls = new PointerLockControls(camera, renderer.domElement);
+    const controls = new PointerLockControls(camera, document.body);
 
     // Активируем захват мыши при клике по экрану игры
     window.addEventListener('click', () => {
@@ -109,7 +146,16 @@ function runGame(RAPIER) {
     const moveDirection = new THREE.Vector3();
     const frontVector = new THREE.Vector3();
     const sideVector = new THREE.Vector3();
-    const speed = 6; // Скорость ходьбы игрока
+
+    const PARAMS = {
+        speed: 6,
+    };
+
+    pane.addBinding(PARAMS, 'speed', {
+        min: 0,
+        max: 20,
+        step: 0.1,
+    });
 
     // 8. Игровой цикл
     function animate() {
@@ -139,8 +185,8 @@ function runGame(RAPIER) {
             moveDirection.normalize();
 
             // Создаем финальный вектор скорости
-            const targetVelocityX = (moveDirection.x * frontVector.z + camera.up.clone().cross(moveDirection).negate().x * sideVector.z) * speed;
-            const targetVelocityZ = (moveDirection.z * frontVector.z + camera.up.clone().cross(moveDirection).negate().z * sideVector.z) * speed;
+            const targetVelocityX = (moveDirection.x * frontVector.z + camera.up.clone().cross(moveDirection).negate().x * sideVector.z) * PARAMS.speed;
+            const targetVelocityZ = (moveDirection.z * frontVector.z + camera.up.clone().cross(moveDirection).negate().z * sideVector.z) * PARAMS.speed;
 
             // Сохраняем текущую силу гравитации по оси Y, чтобы игрок мог падать
             const currentYVelocity = playerBody.linvel().y;
