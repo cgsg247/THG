@@ -3,10 +3,21 @@ import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockCont
 import RAPIER from '@dimforge/rapier3d-compat';
 import { Pane } from 'tweakpane';
 import { loadBackrooms } from './model_load.js';
+import { GameMenu } from './menu.js';
 
 RAPIER.init({}).then(() => {
     runGame(RAPIER);
 });
+
+function isGrounded(world, playerBody, jumpParams) {
+    const pos = playerBody.translation();
+    const ray = new RAPIER.Ray(
+        { x: pos.x, y: pos.y - 0.8, z: pos.z },
+        { x: 0, y: -1, z: 0 }
+    );
+    const hit = world.castRay(ray, jumpParams.groundCheck, true);
+    return hit !== null;
+}
 
 function runGame(RAPIER) {
     // 1. Физический мир
@@ -18,9 +29,7 @@ function runGame(RAPIER) {
     const scene = new THREE.Scene();
     scene.background = new THREE.Color('#050505');
 
-    // Создание панели Tweakpane
-    const pane = new Pane('Geometry control', document.getElementById('panel'));
-
+    // Создание перспективной камеры
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 
     // 3. Рендерер и тени
@@ -33,6 +42,7 @@ function runGame(RAPIER) {
     // Загрузка модели окружения (Backrooms)
     loadBackrooms(scene, './assets/models/original_backrooms.glb');
 
+    // Spot light фонарик
     const flashlight = new THREE.SpotLight(0xffeedd);
     flashlight.intensity = 3.0;
     flashlight.distance = 20;
@@ -46,7 +56,7 @@ function runGame(RAPIER) {
 
     // Цель для фонарика (светит вперёд)
     const flashlightTarget = new THREE.Object3D();
-    flashlightTarget.position.set(0, 0, 5);
+    flashlightTarget.position.set(0, 0, -5);
     camera.add(flashlightTarget);
     flashlight.target = flashlightTarget;
 
@@ -77,17 +87,17 @@ function runGame(RAPIER) {
     const physicsPairs = [];
 
     // 5. Создаем физический пол
+    const floorBodyDesc = RAPIER.RigidBodyDesc.fixed().setTranslation(0, 0, 0);
+    const floorBody = world.createRigidBody(floorBodyDesc);
+    const floorColliderDesc = RAPIER.ColliderDesc.cuboid(50, 0.2, 50);
+    world.createCollider(floorColliderDesc, floorBody);
+
     const floorGeo = new THREE.PlaneGeometry(50, 50);
     const floorMat = new THREE.MeshStandardMaterial({ color: 0x151515, roughness: 0.9 });
     const floorMesh = new THREE.Mesh(floorGeo, floorMat);
     floorMesh.rotation.x = -Math.PI / 2;
     floorMesh.receiveShadow = true;
     scene.add(floorMesh);
-
-    const floorBodyDesc = RAPIER.RigidBodyDesc.fixed().setTranslation(0, 0, 0);
-    const floorBody = world.createRigidBody(floorBodyDesc);
-    const floorColliderDesc = RAPIER.ColliderDesc.cuboid(25, 0.1, 25);
-    world.createCollider(floorColliderDesc, floorBody);
 
     // 6. Создаем физический куб (Препятствие на карте)
     const cubeGeo = new THREE.BoxGeometry(2, 2, 2);
@@ -132,34 +142,196 @@ function runGame(RAPIER) {
     // Подключаем управление мышью от первого лица
     const controls = new PointerLockControls(camera, document.body);
 
-    // Активируем захват мыши при клике по экрану игры
-    window.addEventListener('click', () => {
-        controls.lock();
+    // ==========================================
+    // ИНИЦИАЛИЗАЦИЯ МЕНЮ
+    // ==========================================
+    const gameMenu = new GameMenu();
+    let isGameActive = false, isPaused = false;
+
+    gameMenu.onStart(() => {
+        gameMenu.hideMain();
+        isGameActive = true;
+        isPaused = false;
+        setTimeout(() => {
+            if (!controls.isLocked) {
+                controls.lock();
+            }
+        }, 200);
     });
 
-    // Обработка клавиатуры WASD
-    const keys = { w: false, a: false, s: false, d: false };
-    window.addEventListener('keydown', (e) => { if (e.key.toLowerCase() in keys) keys[e.key.toLowerCase()] = true; });
-    window.addEventListener('keyup', (e) => { if (e.key.toLowerCase() in keys) keys[e.key.toLowerCase()] = false; });
+    gameMenu.onResume(() => {
+        gameMenu.hidePause();
+        isPaused = false;
+        isGameActive = true;
+        setTimeout(() => {
+            if (!controls.isLocked) {
+                controls.lock();
+            }
+        }, 200);
+    });
 
+    gameMenu.onExit(() => {
+        gameMenu.showMain();
+        isGameActive = isPaused = false;
+        if (controls.isLocked) controls.unlock();
+        gameMenu.reset(playerBody, controls);
+    });
+
+    gameMenu.onEscape(
+        () => {
+            if (isGameActive && !isPaused) {
+                gameMenu.showPause();
+                isPaused = true;
+                isGameActive = false;
+                if (controls.isLocked) controls.unlock();
+            }
+        },
+        () => {
+            gameMenu.hidePause();
+            isPaused = false;
+            isGameActive = true;
+            setTimeout(() => {
+                if (!controls.isLocked) {
+                    controls.lock();
+                }
+            }, 200);
+        }
+    );
+
+    gameMenu.showMain();
+
+    // ==========================================
+    // НАСТРОЙКИ UI
+    // ==========================================
+    const pane = new Pane('Geometry control', document.getElementById('panel'));
+
+    // Блокируем всплытие событий на панели
+    const panelDiv = document.getElementById('panel');
+    if (panelDiv) {
+        panelDiv.addEventListener('mousedown', (e) => e.stopPropagation());
+        panelDiv.addEventListener('mouseup', (e) => e.stopPropagation());
+    }
+
+    // Обработчик для UI панели
+    pane.on('change', () => {
+        if (controls && controls.isLocked) {
+            controls.unlock();
+        }
+    });
+
+    // Глобальный флаг для отслеживания состояния блокировки
+    let isPointerLocked = false;
+
+    // Обработчики событий Pointer Lock
+    controls.domElement.addEventListener('pointerlockchange', () => {
+        isPointerLocked = controls.isLocked;
+        console.log('Pointer lock changed:', isPointerLocked);
+    });
+
+    controls.domElement.addEventListener('pointerlockerror', () => {
+        console.log('Pointer lock failed, will retry on next click');
+    });
+
+    window.addEventListener('click', () => {
+        if (isGameActive && !isPaused && !controls.isLocked) {
+            setTimeout(() => {
+                try {
+                    controls.lock();
+                } catch (error) {
+                    console.warn('Failed to lock:', error);
+                }
+            }, 50);
+        }
+    });;
+
+    // Обработка клавиатуры
+    const keys = { w: false, a: false, s: false, d: false, space: false, shift: false };
+    window.addEventListener('keydown', (e) => {
+        const key = e.key.toLowerCase();
+        const code = e.code;
+
+        if (!isGameActive || isPaused)
+            return;
+
+        if (key === 'w' || key === 'ц' || code === 'KeyW') keys.w = true;
+        if (key === 'a' || key === 'ф' || code === 'KeyA') keys.a = true;
+        if (key === 's' || key === 'ы' || code === 'KeyS') keys.s = true;
+        if (key === 'd' || key === 'в' || code === 'KeyD') keys.d = true;
+
+        if (e.code === 'Space') {
+            keys.space = true;
+            e.preventDefault();
+        }
+        if (e.code === 'Shift') {
+            keys.shift = true;
+            e.preventDefault();
+        }
+    });
+    window.addEventListener('keyup', (e) => {
+        const key = e.key.toLowerCase();
+        const code = e.code;
+
+        if (!isGameActive || isPaused)
+            return
+
+        if (key === 'w' || key === 'ц' || code === 'KeyW') keys.w = false;
+        if (key === 'a' || key === 'ф' || code === 'KeyA') keys.a = false;
+        if (key === 's' || key === 'ы' || code === 'KeyS') keys.s = false;
+        if (key === 'd' || key === 'в' || code === 'KeyD') keys.d = false;
+
+        if (e.code === 'Space') {
+            keys.space = false;
+            e.preventDefault();
+        }
+        if (e.code === 'Shift') {
+            keys.shift = false;
+            e.preventDefault();
+        }
+    });
+    window.addEventListener('blur', () => {
+        if (isGameActive && !isPaused && controls.isLocked) {
+            gameMenu.showPause();
+            isPaused = true;
+            isGameActive = false;
+            if (controls.isLocked) controls.unlock();
+        }
+    });
     // Векторы для расчета направления движения
     const moveDirection = new THREE.Vector3();
     const frontVector = new THREE.Vector3();
     const sideVector = new THREE.Vector3();
 
+    // Параметры скорости игрока
     const PARAMS = {
         speed: 6,
+        boost: 1.8
     };
 
     pane.addBinding(PARAMS, 'speed', {
-        min: 0,
+        min: 0.1,
         max: 20,
-        step: 0.1,
+        step: 0.05,
     });
+
+    // Параметры прыжка игрока
+    const jumpParams = {
+        force: 5.5,
+        groundCheck: 0.85
+    };
+
+    pane.addBinding(jumpParams, 'force', { min: 3, max: 10, step: 0.1 });
+    pane.addBinding(jumpParams, 'groundCheck', { min: 0.5, max: 1.2, step: 0.05 });
+
+    let canJump = true;
 
     // 8. Игровой цикл
     function animate() {
         requestAnimationFrame(animate);
+
+        if (!isGameActive || isPaused) {
+            renderer.render(scene, camera);
+            return;
+        }
 
         // Шаг физического мира
         world.step();
@@ -174,31 +346,39 @@ function runGame(RAPIER) {
 
         // ЛОГИКА ДВИЖЕНИЯ ИГРОКА (Только если курсор мыши захвачен игрой)
         if (controls.isLocked) {
-            // Рассчитываем вектор "вперед/назад" на основе направления взгляда камеры
+            // ПРЫЖОК
+            const grounded = isGrounded(world, playerBody, jumpParams);
+            if (keys.space && grounded && canJump) {
+                const vel = playerBody.linvel();
+                playerBody.setLinvel({ x: vel.x, y: jumpParams.force, z: vel.z }, true);
+                console.log("Прыжок");
+                canJump = false;
+            }
+            if (grounded && !keys.space)
+                canJump = true; // защита от повторного прыжка
+
             frontVector.set(0, 0, Number(keys.w) - Number(keys.s));
-            // Рассчитываем вектор "влево/вправо"
             sideVector.set(0, 0, Number(keys.d) - Number(keys.a));
 
-            // Проецируем движения на плоскость пола (чтобы игрок не летал вверх, смотря в небо)
             camera.getWorldDirection(moveDirection);
             moveDirection.y = 0;
             moveDirection.normalize();
 
-            // Создаем финальный вектор скорости
-            const targetVelocityX = (moveDirection.x * frontVector.z + camera.up.clone().cross(moveDirection).negate().x * sideVector.z) * PARAMS.speed;
-            const targetVelocityZ = (moveDirection.z * frontVector.z + camera.up.clone().cross(moveDirection).negate().z * sideVector.z) * PARAMS.speed;
+            let current_speed;
+            // Усокрение по shift
+            if (keys.shift)
+                current_speed = PARAMS.speed * PARAMS.boost;
+            else
+                current_speed = PARAMS.speed;
 
-            // Сохраняем текущую силу гравитации по оси Y, чтобы игрок мог падать
+            const targetVelocityX = (moveDirection.x * frontVector.z + camera.up.clone().cross(moveDirection).negate().x * sideVector.z) * current_speed;
+            const targetVelocityZ = (moveDirection.z * frontVector.z + camera.up.clone().cross(moveDirection).negate().z * sideVector.z) * current_speed;
+
             const currentYVelocity = playerBody.linvel().y;
 
-            // Прикладываем скорость к физическому телу игрока
             playerBody.setLinvel({ x: targetVelocityX, y: currentYVelocity, z: targetVelocityZ }, true);
-        } else {
-            // Если игра на паузе (курсор отпущен) — игрок останавливается, но продолжает падать под гравитацией
-            playerBody.setLinvel({ x: 0, y: playerBody.linvel().y, z: 0 }, true);
         }
 
-        // Привязываем позицию камеры к физическим координатам тела игрока (на уровне глаз)
         const playerPos = playerBody.translation();
         camera.position.set(playerPos.x, playerPos.y + 0.8, playerPos.z);
 
