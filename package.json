@@ -15,7 +15,8 @@
     "@rollup/plugin-node-resolve": "^16.0.3",
     "@rollup/plugin-terser": "^1.0.0",
     "@types/three": "^0.184.1",
-    "rollup": "^4.61.1"
+    "rollup": "^4.61.1",
+    "rollup-plugin-copy": "^3.5.0"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.19.3",
