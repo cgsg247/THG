@@ -1114,3 +1114,661 @@ void main( void )
 
 /* END OF 'frag.glsl' FILE */
 ```
+
+```
+/*************************************************************
+ * Copyright (C) 2026
+ *    Computer Graphics Support Group of 30 Phys-Math Lyceum
+ *************************************************************/
+
+/* FILE NAME   : geom.glsl
+ * PURPOSE     : Tough Traffic Vegetation project.
+ *               Screen space effects shaders.
+ *               SS reflection shaders.
+ *               Fragment shader.
+ * PROGRAMMER  : CGSG'Jr'2025.
+ *               Atyukov Aleksandr (AA3).
+ * LAST UPDATE : 10.06.2026.
+ * NOTE        : Optimized and fixed.
+ *
+ * No part of this file may be changed without agreement of
+ * Computer Graphics Support Group of 30 Phys-Math Lyceum
+ */
+
+#version 300 es
+precision highp float;
+
+layout(location = 0) out vec4 OutColor;
+
+// Входные текстуры G-буфера
+uniform sampler2D ColorTex;
+uniform sampler2D NormalTex;
+uniform sampler2D DepthTex;
+
+// Матрицы и параметры экрана
+uniform mat4 MatrP;
+uniform float FrameW;
+uniform float FrameH;
+uniform bool IsDebug;
+
+/* Настройки трассировки */
+float RayStep = 0.04;       // Базовый шаг луча во View Space
+int MaxSteps = 150;         // Количество шагов (уменьшено для оптимизации FPS)
+int BinarySteps = 6;       // Шаги уточнения пересечения
+float SearchDist = 50.0;    // Максимальная дистанция луча
+float ObjectThickness = 0.4; // Предполагаемая толщина объектов в метрах
+
+/* Get normal from normal texture function */
+vec4 GetNormal( vec2 UV )
+{
+  return texture(NormalTex, UV);
+}
+
+/* Get depth from depth texture function */
+float GetDepth( vec2 UV )
+{
+  return texture(DepthTex, UV).r;
+}
+
+/* Get color from color texture function */
+vec3 GetColor( vec2 UV )
+{
+  return texture(ColorTex, UV).rgb;
+}
+
+/* Get UV from View Space position */
+vec2 GetUV( vec3 viewPos )
+{
+  vec4 clip = MatrP * vec4(viewPos, 1.0);
+  vec3 ndc = clip.xyz / clip.w;
+  return ndc.xy * 0.5 + 0.5;
+}
+
+/* 
+ * ИСПРАВЛЕНО: Восстановление позиции во View Space с использованием 
+ * предопределенной инвертированной матрицы проекции (InvP)
+ */
+vec3 GetPosFromUV( vec2 UV, mat4 InvP ) 
+{
+  float z = GetDepth(UV);
+  // Переводим экранные UV [0,1] и глубинное Z [0,1] в пространство NDC [-1, 1]
+  vec4 ndc = vec4(UV * 2.0 - 1.0, z * 2.0 - 1.0, 1.0);
+  
+  vec4 view = InvP * ndc;
+  return view.xyz / view.w; // Перспективное деление для View Space
+}
+
+/* ИСПРАВЛЕНО: Бинарный поиск с корректным сравнением глубин во View Space */
+vec2 BinarySearch( vec3 Dir, vec2 StartUV, vec3 StartPoint, mat4 InvP )
+{
+  vec3 HitPoint = StartPoint;
+  vec3 NewPoint;
+  vec2 NewUV;
+
+  for (int i = 0; i < BinarySteps; i++)
+  {
+    RayStep *= 0.5;  
+    NewPoint = HitPoint + Dir * RayStep;
+    NewUV = GetUV(NewPoint);
+    
+    if (any(lessThan(NewUV, vec2(0.0))) || any(greaterThan(NewUV, vec2(1.0))))
+      return vec2(-1.0);
+      
+    vec3 scenePos = GetPosFromUV(NewUV, InvP);
+    
+    // В View Space OpenGL геометрия имеет отрицательный Z (-Z). 
+    // Если Z луча меньше (дальше от камеры), чем Z сцены — мы под поверхностью.
+    if (NewPoint.z < scenePos.z)
+    {
+      // Луч глубоко — откатываемся назад к предыдущей удачной точке
+      RayStep *= -1.0; 
+    }
+    HitPoint = NewPoint;
+  }
+  return GetUV(HitPoint);
+}
+
+/* ИСПРАВЛЕНО: Защита от самопересечений и учет толщины объектов */
+vec2 RayMarch( vec3 Pos, vec3 Dir, mat4 InvP )
+{
+  vec3 CurrentPos = Pos;
+  vec2 uv;
+   
+  for (int i = 0; i < MaxSteps; i++)
+  {
+    // Динамическое масштабирование шага в зависимости от расстояния (экономит FPS вдали)
+    float dynamicStep = RayStep * max(1.0, abs(CurrentPos.z) * 0.05);
+    CurrentPos += Dir * dynamicStep;
+    
+    if (length(CurrentPos - Pos) > SearchDist)
+      return vec2(-1.0);
+      
+    uv = GetUV(CurrentPos); 
+    if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0))))
+      return vec2(-1.0);
+      
+    vec3 scenePos = GetPosFromUV(uv, InvP);
+    
+    // Проверка пересечения: координата Z луча ушла ДАЛЬШЕ (вглубь экрана), чем Z сцены
+    if (CurrentPos.z < scenePos.z)
+    {
+      float delta = scenePos.z - CurrentPos.z;
+      
+      // ИСПРАВЛЕНО: Проверяем толщину объекта, чтобы луч не пересекал "воздух" под коровами
+      if (delta > 0.0 && delta < ObjectThickness)
+      {
+         return BinarySearch(Dir, uv, CurrentPos, InvP);
+      }
+    }
+  }
+  return vec2(-1.0);
+}
+
+void main( void )
+{
+  if (IsDebug && gl_FragCoord.x < FrameW / 4.0)
+    discard;
+
+  vec2 uv = vec2(gl_FragCoord.x / FrameW, gl_FragCoord.y / FrameH);
+  
+  // 1. Оптимизация: Считаем инвертированную матрицу ОДИН раз для пикселя, а не внутри циклов
+  mat4 MatrInvP = inverse(MatrP);
+  
+  // 2. Отсечение неба (запрещаем пикселям фона пускать лучи)
+  float rawDepth = GetDepth(uv);
+  if (rawDepth >= 1.0) {
+      OutColor = vec4(0.0);
+      return;
+  }
+  
+  vec3 viewPos = GetPosFromUV(uv, MatrInvP);
+  vec3 viewDir = normalize(-viewPos);
+  vec4 normal = GetNormal(uv);
+  
+  // 3. ОТСЕЧЕНИЕ САМОПЕРЕСЕЧЕНИЙ КОРОВЫ (Временная маска по цвету)
+  // Запрещаем золотым/желтым пикселям коровы генерировать отражения на самих себе
+  vec3 baseColor = GetColor(uv);
+  if (baseColor.r > 0.5 && baseColor.g > 0.4 && baseColor.b < 0.3) {
+      OutColor = vec4(0.0); 
+      return;
+  }
+  
+  vec3 reflectedDir = reflect(viewDir, normal.xyz);
+  
+  // Сдвигаем точку старта луча вперед вдоль нормали (Ray Acne Offset / Bias)
+  vec3 biasPos = viewPos + normal.xyz * 0.15; 
+
+  vec2 hitUV = RayMarch(biasPos, reflectedDir, MatrInvP);
+  
+  // 4. ИСПРАВЛЕНО ПОД GL_ONE, GL_ONE: Шейдер выводит ТОЛЬКО чистый аддитивный цвет отражения
+  if (hitUV.x < 0.0) {
+      OutColor = vec4(0.0); // Ничего не прибавляем к пикселю
+  } else {
+      vec3 reflectedColor = GetColor(hitUV); 
+      
+      // Ослабление Френеля (отражения сильнее на краях под острым углом взгляда)
+      float fresnel = pow(clamp(1.0 + dot(viewDir, normal.xyz), 0.0, 1.0), 4.0);
+      
+      // Виньетка затухания к краям экрана (убирает жесткие срезы уходящих лучей)
+      vec2 edgeFactor = smoothstep(vec2(0.0), vec2(0.08), hitUV) * 
+                        smoothstep(vec2(0.0), vec2(0.08), 1.0 - hitUV);
+      float screenFade = edgeFactor.x * edgeFactor.y;
+
+      // Окончательный результат, который наложится поверх существующего пола
+      vec3 ssrFinal = reflectedColor * fresnel * screenFade * 0.8; // 0.8 - общая интенсивность
+      
+      OutColor = vec4(ssrFinal, 1.0);
+  }
+}
+```
+
+```
+/*************************************************************
+ * Copyright (C) 2026
+ *    Computer Graphics Support Group of 30 Phys-Math Lyceum
+ *************************************************************/
+
+/* FILE NAME   : geom.glsl
+ * PURPOSE     : Tough Traffic Vegetation project.
+ *               Screen space effects shaders.
+ *               SS reflection shaders.
+ *               Fragment shader.
+ * PROGRAMMER  : CGSG'Jr'2025.
+ *               Atyukov Aleksandr (AA3).
+ * LAST UPDATE : 29.05.2026.
+ * NOTE        : None.
+ *
+ * No part of this file may be changed without agreement of
+ * Computer Graphics Support Group of 30 Phys-Math Lyceum
+ */
+
+/* 1 ray step size */
+float RayStep = 0.01;
+
+/* Max step count */
+int MaxSteps = 300;
+
+/* Binary search iterations steps count */
+int BinarySteps = 8;
+
+float SearchDist = 50;
+
+mat4 MatrInvP = inverse(MatrP);
+
+/* Get normal from normal texture fucntion.
+ * ARGUMENTS:
+ *   - uv:
+ *     vec2 UV;
+ * RETURNS: (vec3) normal.
+ */
+vec4 GetNormal( vec2 UV )
+{
+  return normalize(texture(NormalTex, UV));
+} /* End of 'GetNormal' function */
+
+/* Get depth from depth texture fucntion.
+ * ARGUMENTS:
+ *   - uv:
+ *     vec2 UV;
+ * RETURNS: (float) depth.
+ */
+float GetDepth( vec2 UV )
+{
+  return texture(DepthTex, UV).r;
+} /* End of 'GetDepth' function */
+
+/* Get color from color texture fucntion.
+ * ARGUMENTS:
+ *   - uv:
+ *     vec2 UV;
+ * RETURNS: (vec3) color.
+ */
+vec3 GetColor( vec2 UV )
+{
+  return texture(ColorTex, UV).rgb;
+} /* End of 'GetColor' function */
+
+/* Get UV from world position fucntion.
+ * ARGUMENTS:
+ *   - world position:
+ *       vec3 Pos;
+ * RETURNS: (vec2) UV.
+ */
+vec2 GetUV( vec3 Pos )
+{
+  vec4 clip = MatrP * vec4(Pos, 1.0);
+  vec3 ndc = clip.xyz / clip.w;
+  
+  return ndc.xy * 0.5 + 0.5;
+} /* End of 'GetUV' function */
+
+/* Get world position from UV coordinates fucntion.
+ * ARGUMENTS:
+ *   - screen coordinates:
+ *       vec2 UV;
+ * RETURNS: (vec3) world position.
+ */
+vec3 GetPosFromUV( vec2 UV ) 
+{
+  float z = GetDepth(UV);
+  vec4 clip = vec4(UV * 2.0 - 1.0, z * 2.0 - 1.0, 1.0);
+  vec4 view = MatrInvP * clip;
+  
+  return view.xyz / view.z;
+  //return (clip * inverse(MatrVP)).xyz;
+} /* End of 'GetPosFromUV' function */
+
+/* Binary search reflection fucntion.
+ * ARGUMENTS:
+ * RETURNS: (vec2) binary searched uv.
+ */
+vec2 BinarySearch( vec3 Dir, vec2 StartUV, vec3 StartPoint )
+{
+  vec3 HitPoint = StartPoint, NewPoint;
+  vec2 uv = StartUV, NewUV;
+
+  for (int i = 0; i < BinarySteps; i++)
+  {
+    RayStep *= 0.5;  
+    NewPoint = HitPoint + Dir * RayStep;
+    NewUV = GetUV(NewPoint);
+    if (any(lessThan(NewUV, vec2(0))) || any(greaterThan(NewUV, vec2(1))))
+      return vec2(-1);
+    vec3 ScenePos = GetPosFromUV(NewUV);
+    if (NewPoint.z < ScenePos.z)
+    {
+      HitPoint = NewPoint;
+      uv = NewUV;
+    }
+  }
+  return uv;
+} /* End of 'BinarySearch' funciton */
+
+/* Ray marching fucntion.
+ * ARGUMENTS:
+ *   - current position:
+ *       vec3 Pos; 
+ *   - directional vector:
+ *       vec3 Dir;
+ * RETURNS: (vec2) vertex uv after ray marching.
+ */
+/*
+vec2 RayMarch( vec3 Pos, vec3 Dir )
+{
+  vec3 CurrentPos = Pos;
+  vec2 uv;
+  
+  for (int i = 0; i < MaxSteps; i++)
+  {
+    CurrentPos += Dir * RayStep;
+    if (length(CurrentPos - Pos) > SearchDist)
+      return vec2(-1);
+
+    uv = GetUV(CurrentPos); 
+    if (any(lessThan(uv, vec2(0))) || any(greaterThan(uv, vec2(1))))
+      return vec2(-1);
+
+    vec3 sceneViewPos = GetPosFromUV(uv); 
+    
+    if (CurrentPos.z < sceneViewPos.z)
+    {
+      float delta = sceneViewPos.z - CurrentPos.z;
+      if (delta < 0.5)
+        return BinarySearch(Dir, uv, CurrentPos);
+    }
+  }
+  return vec2(-1);
+} /* End of 'RayMarch' fucntion */
+
+vec2 RayMarch( vec3 Pos, vec3 Dir )
+{
+  vec3 CurrentPos = Pos;
+  float Step = 0.05; 
+  
+  for (int i = 0; i < 50; i++)
+  {
+    CurrentPos += Dir * Step;
+    vec2 uv = GetUV(CurrentPos); 
+    
+    if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) return vec2(-1);
+    
+    vec3 scenePos = GetPosFromUV(uv);
+    
+    if (CurrentPos.z < scenePos.z)
+    {
+       float distFromStart = length(CurrentPos - Pos);
+       if (distFromStart < 0.1) 
+       {
+           continue;
+       }
+
+       float delta = scenePos.z - CurrentPos.z;
+       if (delta < 0.5)
+           return BinarySearch(Dir, uv, CurrentPos);
+    }
+  }
+  return vec2(-1);
+}
+
+
+/* The main shader function */
+void main( void )
+{
+  if (IsDebug && gl_FragCoord.x < FrameW / 4)
+    discard;
+
+  vec2 uv = vec2(gl_FragCoord.x / FrameW, gl_FragCoord.y / FrameH);
+  
+  /*
+  if (uv.x < 0 || uv.x > 1 || uv.y < 0 || uv.y > 1)
+    discard;
+  */
+  vec3 viewPos = GetPosFromUV(uv);
+  vec3 viewDir = normalize(-viewPos);
+  vec4 normal = GetNormal(uv);
+
+  if (normal.w < 0.01) {
+    OutColor = vec4(0.0);
+    return;
+  }
+  
+  vec3 reflectedDir = reflect(viewDir, normal.xyz);
+
+  vec3 biasPos = viewPos + normal.xyz * 0.05; 
+
+  vec2 hitUV = RayMarch(biasPos, reflectedDir); 
+
+  //vec2 hitUV = RayMarch(viewPos, reflectedDir);
+  /*
+  if (hitUV == vec2(-1))
+  {
+    OutColor = vec4(1, 0, 0, 1); 
+    return;
+  }
+  else
+  {
+    OutColor = vec4(0, 1, 0, 1); 
+    return;
+  }
+  */
+  vec3 reflectedColor;
+  if (hitUV.x < 0.0f) {
+      reflectedColor = vec3(0.0f); // Если не попали — нет отражения
+  } else {
+      reflectedColor = GetColor(hitUV);
+      
+      // Затухание у краев экрана, чтобы не было резких срезов отражения
+      vec2 edgeFactor = smoothstep(vec2(0.0f), vec2(0.1f), hitUV) * 
+                        smoothstep(vec2(0.0f), vec2(0.1f), 1.0f - hitUV);
+      float screenFade = edgeFactor.x * edgeFactor.y;
+      
+      reflectedColor *= screenFade;
+  }//vec3 reflectedColor = GetColor(hitUV); 
+
+  float fresnel = pow(1 + dot(viewDir, normal.xyz), 2);
+  vec4 finalColor = mix(vec4(GetColor(uv), 1), vec4(reflectedColor, 1), fresnel);
+  //vec3 finalColor = reflectedColor;
+  //gl_FragDepth = GetDepth(hitUV);
+  OutColor = vec4(finalColor.xyz, 1);
+  //OutColor = vec4(1);
+} /* End of 'main' function */
+
+/* END OF 'frag.glsl' FILE */
+```
+
+```
+/*************************************************************
+ * Copyright (C) 2026
+ *    Computer Graphics Support Group of 30 Phys-Math Lyceum
+ *************************************************************/
+
+/* FILE NAME   : geom.glsl
+ * PURPOSE     : Tough Traffic Vegetation project.
+ *               Screen space effects shaders.
+ *               SS reflection shaders.
+ *               Fragment shader.
+ * PROGRAMMER  : CGSG'Jr'2025.
+ *               Atyukov Aleksandr (AA3).
+ * LAST UPDATE : 10.06.2026.
+ * NOTE        : Optimized and fixed.
+ *
+ * No part of this file may be changed without agreement of
+ * Computer Graphics Support Group of 30 Phys-Math Lyceum
+ */
+
+float RayStep = 0.12;       // Увеличено, чтобы луч улетал дальше
+int MaxSteps = 100;         // 100 шагов хватит для красивого шлейфа
+int BinarySteps = 6;       // Шаги уточнения пересечения
+float SearchDist = 50.0;    // Максимальная дистанция луча
+float ObjectThickness = 1.5;
+
+/* Get normal from normal texture function */
+vec4 GetNormal( vec2 UV )
+{
+  return texture(NormalTex, UV);
+}
+
+/* Get depth from depth texture function */
+float GetDepth( vec2 UV )
+{
+  return texture(DepthTex, UV).r;
+}
+
+/* Get color from color texture function */
+vec3 GetColor( vec2 UV )
+{
+  return texture(ColorTex, UV).rgb;
+}
+
+/* Get UV from View Space position */
+vec2 GetUV( vec3 viewPos )
+{
+  vec4 clip = MatrP * vec4(viewPos, 1.0);
+  vec3 ndc = clip.xyz / clip.w;
+  return ndc.xy * 0.5 + 0.5;
+}
+
+/* 
+ * ИСПРАВЛЕНО: Восстановление позиции во View Space с использованием 
+ * предопределенной инвертированной матрицы проекции (InvP)
+ */
+vec3 GetPosFromUV( vec2 UV, mat4 InvP ) 
+{
+  float z = GetDepth(UV);
+  // Переводим экранные UV [0,1] и глубинное Z [0,1] в пространство NDC [-1, 1]
+  vec4 ndc = vec4(UV * 2.0 - 1.0, z * 2.0 - 1.0, 1.0);
+  
+  vec4 view = InvP * ndc;
+  return view.xyz / view.w; // Перспективное деление для View Space
+}
+
+/* ИСПРАВЛЕНО: Бинарный поиск с корректным сравнением глубин во View Space */
+vec2 BinarySearch( vec3 Dir, vec2 StartUV, vec3 StartPoint, mat4 InvP )
+{
+  vec3 HitPoint = StartPoint;
+  vec3 NewPoint;
+  vec2 NewUV;
+
+  for (int i = 0; i < BinarySteps; i++)
+  {
+    RayStep *= 0.5;  
+    NewPoint = HitPoint + Dir * RayStep;
+    NewUV = GetUV(NewPoint);
+    
+    if (any(lessThan(NewUV, vec2(0.0))) || any(greaterThan(NewUV, vec2(1.0))))
+      return vec2(-1.0);
+      
+    vec3 scenePos = GetPosFromUV(NewUV, InvP);
+    
+    // В View Space OpenGL геометрия имеет отрицательный Z (-Z). 
+    // Если Z луча меньше (дальше от камеры), чем Z сцены — мы под поверхностью.
+    if (NewPoint.z < scenePos.z)
+    {
+      // Луч глубоко — откатываемся назад к предыдущей удачной точке
+      RayStep *= -1.0; 
+    }
+    HitPoint = NewPoint;
+  }
+  return GetUV(HitPoint);
+}
+
+/* ИСПРАВЛЕНО: Защита от самопересечений и учет толщины объектов */
+vec2 RayMarch( vec3 Pos, vec3 Dir, mat4 InvP )
+{
+  vec3 CurrentPos = Pos;
+  vec2 uv;
+   
+  for (int i = 0; i < MaxSteps; i++)
+  {
+    // Динамическое масштабирование шага в зависимости от расстояния (экономит FPS вдали)
+    float dynamicStep = RayStep * max(1.0, abs(CurrentPos.z) * 0.05);
+    CurrentPos += Dir * dynamicStep;
+    
+    if (length(CurrentPos - Pos) > SearchDist)
+      return vec2(-1.0);
+      
+    uv = GetUV(CurrentPos); 
+    if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0))))
+      return vec2(-1.0);
+      
+    vec3 scenePos = GetPosFromUV(uv, InvP);
+    
+    // Проверка пересечения: координата Z луча ушла ДАЛЬШЕ (вглубь экрана), чем Z сцены
+    if (CurrentPos.z < scenePos.z)
+    {
+      float delta = scenePos.z - CurrentPos.z;
+      
+      if (delta > 0.0 && delta < ObjectThickness)
+      {
+         float hitRawDepth = GetDepth(uv);
+         
+         if (hitRawDepth >= 0.999) 
+             continue; 
+
+         return BinarySearch(Dir, uv, CurrentPos, InvP);
+      }
+    }
+  }
+  return vec2(-1.0);
+}
+
+void main( void )
+{
+  if (IsDebug && gl_FragCoord.x < FrameW / 4.0)
+    discard;
+
+  vec2 uv = vec2(gl_FragCoord.x / FrameW, gl_FragCoord.y / FrameH);
+  
+  // 1. Оптимизация: Считаем инвертированную матрицу ОДИН раз для пикселя, а не внутри циклов
+  mat4 MatrInvP = inverse(MatrP);
+  
+  // 2. Отсечение неба (запрещаем пикселям фона пускать лучи)
+  float rawDepth = GetDepth(uv);
+  if (rawDepth >= 1.0) {
+      OutColor = vec4(0.0);
+      return;
+  }
+  
+  vec3 viewPos = GetPosFromUV(uv, MatrInvP);
+  vec3 viewDir = normalize(viewPos);
+  vec4 normal = GetNormal(uv);
+  
+  // 3. ОТСЕЧЕНИЕ САМОПЕРЕСЕЧЕНИЙ КОРОВЫ (Временная маска по цвету)
+  // Запрещаем золотым/желтым пикселям коровы генерировать отражения на самих себе
+  vec3 baseColor = GetColor(uv);
+/*
+  if (baseColor.r > 0.5 && baseColor.g > 0.4 && baseColor.b < 0.3) {
+      OutColor = vec4(0.0); 
+      return;
+  }
+*/  
+  vec3 reflectedDir = reflect(viewDir, normal.xyz);
+  
+  // Сдвигаем точку старта луча вперед вдоль нормали (Ray Acne Offset / Bias)
+  vec3 biasPos = viewPos + normal.xyz * 0.15; 
+
+  vec2 hitUV = RayMarch(biasPos, reflectedDir, MatrInvP);
+  
+  // 4. ИСПРАВЛЕНО ПОД GL_ONE, GL_ONE: Шейдер выводит ТОЛЬКО чистый аддитивный цвет отражения
+  if (hitUV.x < 0.0) {
+      OutColor = vec4(0.0); // Ничего не прибавляем к пикселю
+  } else {
+      vec3 reflectedColor = GetColor(hitUV); 
+      
+      // Ослабление Френеля (отражения сильнее на краях под острым углом взгляда)
+      float fresnel = pow(clamp(1.0 + dot(viewDir, normal.xyz), 0.0, 1.0), 4.0);
+      
+      // Виньетка затухания к краям экрана (убирает жесткие срезы уходящих лучей)
+      vec2 edgeFactor = smoothstep(vec2(0.0), vec2(0.08), hitUV) * 
+                        smoothstep(vec2(0.0), vec2(0.08), 1.0 - hitUV);
+      float screenFade = edgeFactor.x * edgeFactor.y;
+
+      // Окончательный результат, который наложится поверх существующего пола
+      vec3 ssrFinal = reflectedColor * fresnel /* screenFade*/ * 0.8; // 0.8 - общая интенсивность
+      
+      OutColor = vec4(ssrFinal, 1.0);
+  }
+} /* End of 'main' function */
+
+/* END OF 'frag.glsl' FILE */
+```
