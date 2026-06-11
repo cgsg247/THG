@@ -61,7 +61,7 @@ function runGame(RAPIER) {
   document.body.appendChild(renderer.domElement);
 
   // Загрузка модели окружения (Backrooms)
-  loadBackrooms(scene, "./assets/models/dreamcore_liminal_space.glb");
+  loadBackrooms(scene, "./assets/models/backrooms_vr18.glb");
 
   createFlashlight(scene, camera);
   createFlashlightUI();
