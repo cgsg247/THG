@@ -42,35 +42,35 @@ function runGame(RAPIER) {
     // Загрузка модели окружения (Backrooms)
     loadBackrooms(scene, './assets/models/original_backrooms.glb');
 
-    // Spot light фонарик
-    const flashlight = new THREE.SpotLight(0xffeedd);
-    flashlight.intensity = 3.0;
-    flashlight.distance = 20;
-    flashlight.angle = 0.6;       // узкий конус
-    flashlight.penumbra = 0.5;    // мягкий край
-    flashlight.decay = 1.0;       // быстрое затухание
-    flashlight.castShadow = true;
-    flashlight.shadow.mapSize.width = 1024;
-    flashlight.shadow.mapSize.height = 1024;
-    flashlight.shadow.bias = -0.0001;
+    // // Spot light фонарик
+    // const flashlight = new THREE.SpotLight(0xffeedd);
+    // flashlight.intensity = 3.0;
+    // flashlight.distance = 20;
+    // flashlight.angle = 0.6;       // узкий конус
+    // flashlight.penumbra = 0.5;    // мягкий край
+    // flashlight.decay = 1.0;       // быстрое затухание
+    // flashlight.castShadow = true;
+    // flashlight.shadow.mapSize.width = 1024;
+    // flashlight.shadow.mapSize.height = 1024;
+    // flashlight.shadow.bias = -0.0001;
 
-    // Цель для фонарика (светит вперёд)
-    const flashlightTarget = new THREE.Object3D();
-    flashlightTarget.position.set(0, 0, -5);
-    camera.add(flashlightTarget);
-    flashlight.target = flashlightTarget;
+    // // Цель для фонарика (светит вперёд)
+    // const flashlightTarget = new THREE.Object3D();
+    // flashlightTarget.position.set(0, 0, -5);
+    // camera.add(flashlightTarget);
+    // flashlight.target = flashlightTarget;
 
-    // Добавляем фонарик на камеру
-    camera.add(flashlight);
+    // // Добавляем фонарик на камеру
+    // camera.add(flashlight);
 
-    // Маленький свет вокруг игрока (мягкое свечение)
-    const playerGlow = new THREE.PointLight(0x886644, 0.2, 8);
-    playerGlow.castShadow = false;
-    camera.add(playerGlow);
+    // // Маленький свет вокруг игрока (мягкое свечение)
+    // const playerGlow = new THREE.PointLight(0x886644, 0.2, 8);
+    // playerGlow.castShadow = false;
+    // camera.add(playerGlow);
 
-    console.log('Фонарик добавлен на камеру');
-    console.log('Позиция фонарика:', flashlight.position);
-    console.log('Цель фонарика:', flashlight.target.position);
+    // console.log('Фонарик добавлен на камеру');
+    // console.log('Позиция фонарика:', flashlight.position);
+    // console.log('Цель фонарика:', flashlight.target.position);
 
     // Освещение (Направленный свет + слабый эмбиент)
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.05);
