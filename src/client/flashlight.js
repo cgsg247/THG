@@ -19,8 +19,8 @@ export function createFlashlight(scene, camera) {
   flashlight.penumbra = 0.5;
   flashlight.decay = 1.0;
   flashlight.castShadow = true;
-  flashlight.shadow.mapSize.width = 1024;
-  flashlight.shadow.mapSize.height = 1024;
+  flashlight.shadow.mapSize.width = 2048;
+  flashlight.shadow.mapSize.height = 2048;
   flashlight.shadow.bias = -0.0001;
 
   flashlightTarget = new THREE.Object3D();

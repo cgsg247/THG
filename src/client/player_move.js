@@ -1,7 +1,9 @@
+import RAPIER from "@dimforge/rapier3d-compat";
+
 function isGrounded(RAPIER, world, playerBody, jumpParams) {
   const pos = playerBody.translation();
   const ray = new RAPIER.Ray(
-    { x: pos.x, y: pos.y - 0.55, z: pos.z },
+    { x: pos.x, y: pos.y, z: pos.z },
     { x: 0, y: -1, z: 0 },
   );
   const hit = world.castRay(ray, jumpParams.groundCheck, true);
@@ -19,7 +21,6 @@ export function MovePlayer(
   sideVector,
   controls,
   keys,
-  RAPIER,
   canJump,
 ) {
   // ЛОГИКА ДВИЖЕНИЯ ИГРОКА (Только если курсор мыши захвачен игрой)
@@ -32,7 +33,7 @@ export function MovePlayer(
       console.log("Прыжок");
       canJump = false;
     }
-    if (grounded && !keys.space && !canJump) canJump = true; // защита от повторного прыжка
+    if (grounded) canJump = true; // защита от повторного прыжка
 
     frontVector.set(0, 0, Number(keys.w) - Number(keys.s));
     sideVector.set(0, 0, Number(keys.d) - Number(keys.a));
@@ -64,6 +65,10 @@ export function MovePlayer(
   }
 
   const playerPos = playerBody.translation();
-  camera.position.set(playerPos.x, playerPos.y + 0.8, playerPos.z);
+  camera.position.set(
+    playerPos.x,
+    playerPos.y + jumpParams.playerHeight,
+    playerPos.z,
+  );
   return canJump;
 }

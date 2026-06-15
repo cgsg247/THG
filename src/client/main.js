@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { PointerLockControls } from "three/examples/jsm/controls/PointerLockControls.js";
 import RAPIER from "@dimforge/rapier3d-compat";
 import { Pane } from "tweakpane";
-import { loadBackrooms } from "./model_load.js";
+import { loadModel } from "./model_load.js";
 import { GameMenu } from "./menu.js";
 import { MovePlayer } from "./player_move.js";
 import Stats from "stats.js";
@@ -14,6 +14,12 @@ import {
 } from "./flashlight.js";
 import { enableLight } from "./light.js";
 import { createPlayer, create3dBodies, physicsPairs } from "./physic_bodies.js";
+import {
+  initCamera,
+  spectatorMode,
+  responseCamera,
+  setSpectatorActive,
+} from "./camera.js";
 
 RAPIER.init({}).then(() => {
   runGame(RAPIER);
@@ -28,10 +34,8 @@ function runGame(RAPIER) {
     canvas.style.marginRight = "5px";
   });
 
-  stats.dom.style.position = "absolute";
   stats.dom.style.top = "10px";
   stats.dom.style.left = "10px";
-  stats.dom.style.zIndex = "1000";
   stats.dom.style.width = "auto";
 
   document.body.appendChild(stats.dom);
@@ -45,13 +49,7 @@ function runGame(RAPIER) {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color("#050505");
 
-  // Создание перспективной камеры
-  const camera = new THREE.PerspectiveCamera(
-    75,
-    window.innerWidth / window.innerHeight,
-    0.1,
-    1000,
-  );
+  const camera = initCamera();
 
   // 3. Рендерер и тени
   const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -61,7 +59,7 @@ function runGame(RAPIER) {
   document.body.appendChild(renderer.domElement);
 
   // Загрузка модели окружения (Backrooms)
-  loadBackrooms(scene, "./assets/models/backrooms_vr18.glb");
+  loadModel(scene, "./assets/models/backrooms_vr18.glb", world);
 
   createFlashlight(scene, camera);
   createFlashlightUI();
@@ -69,7 +67,7 @@ function runGame(RAPIER) {
   enableLight(scene);
 
   // Создаем физичсекие 3д тела (куб и сфера)
-  create3dBodies(scene, world);
+  // create3dBodies(scene, world);
   // Создаем физического игрока
   const playerBody = createPlayer(world);
 
@@ -151,6 +149,11 @@ function runGame(RAPIER) {
 
   // Обработчики событий Pointer Lock
   controls.domElement.addEventListener("pointerlockchange", () => {
+    if (!controls.isLocked) {
+      setSpectatorActive(false);
+      velocity.set(0, 0, 0);
+      Object.keys(keys).forEach((k) => (keys[k] = false));
+    }
     isPointerLocked = controls.isLocked;
     console.log("Pointer lock changed:", isPointerLocked);
   });
@@ -171,6 +174,10 @@ function runGame(RAPIER) {
     }
   });
 
+  const velocity = new THREE.Vector3();
+  const clock = new THREE.Timer();
+  timer.connect(document);
+
   // Обработка клавиатуры
   const keys = {
     w: false,
@@ -179,6 +186,7 @@ function runGame(RAPIER) {
     d: false,
     space: false,
     shift: false,
+    f1: false,
   };
   window.addEventListener("keydown", (e) => {
     const key = e.key.toLowerCase();
@@ -191,13 +199,18 @@ function runGame(RAPIER) {
     if (key === "s" || key === "ы" || code === "KeyS") keys.s = true;
     if (key === "d" || key === "в" || code === "KeyD") keys.d = true;
 
-    if (e.code === "Space") {
+    if (code === "Space" || key === " ") {
       keys.space = true;
       e.preventDefault();
     }
-    if (e.code === "Shift") {
+    if (code === "Shift" || e.shiftKey) {
       keys.shift = true;
       e.preventDefault();
+    }
+    if (e.code === "KeyF1" || e.key === "f1") {
+      keys.f1 = true;
+      e.preventDefault();
+      spectatorMode(controls);
     }
   });
   window.addEventListener("keyup", (e) => {
@@ -211,12 +224,16 @@ function runGame(RAPIER) {
     if (key === "s" || key === "ы" || code === "KeyS") keys.s = false;
     if (key === "d" || key === "в" || code === "KeyD") keys.d = false;
 
-    if (e.code === "Space") {
+    if (code === "Space" || key === " ") {
       keys.space = false;
       e.preventDefault();
     }
-    if (e.code === "Shift") {
+    if (code === "Shift" || e.shiftKey) {
       keys.shift = false;
+      e.preventDefault();
+    }
+    if (code === "KeyF1" || key === "f1") {
+      keys.f1 = false;
       e.preventDefault();
     }
   });
@@ -228,6 +245,7 @@ function runGame(RAPIER) {
       if (controls.isLocked) controls.unlock();
     }
   });
+
   // Векторы для расчета направления движения
   const moveDirection = new THREE.Vector3();
   const frontVector = new THREE.Vector3();
@@ -249,6 +267,7 @@ function runGame(RAPIER) {
   const jumpParams = {
     force: 5.5,
     groundCheck: 1.2,
+    playerHeight: 0.8,
   };
 
   pane.addBinding(jumpParams, "force", { min: 3, max: 10, step: 0.1 });
@@ -257,12 +276,20 @@ function runGame(RAPIER) {
     max: 1.2,
     step: 0.05,
   });
+  pane.addBinding(jumpParams, "playerHeight", {
+    min: 0.1,
+    max: 1.0,
+    step: 0.05,
+  });
 
   let canJump = true;
 
   // 8. Игровой цикл
   function animate() {
     requestAnimationFrame(animate);
+    timer.update();
+    const delta = timer.getDelta();
+
     stats.begin();
 
     if (!isGameActive || isPaused) {
@@ -278,7 +305,7 @@ function runGame(RAPIER) {
     // Шаг физического мира
     world.step();
 
-    // Синхронизируем физические тела (наш зеленый куб) с графикой
+    // Синхронизируем физические тела с графикой
     physicsPairs.forEach((pair) => {
       const position = pair.body.translation();
       const rotation = pair.body.rotation();
@@ -286,20 +313,26 @@ function runGame(RAPIER) {
       pair.mesh.quaternion.set(rotation.x, rotation.y, rotation.z, rotation.w);
     });
 
-    MovePlayer(
-      world,
-      playerBody,
-      jumpParams,
-      camera,
-      PARAMS,
-      moveDirection,
-      frontVector,
-      sideVector,
-      controls,
-      keys,
-      RAPIER,
-      canJump,
-    );
+    if (!keys.f1)
+      MovePlayer(
+        world,
+        playerBody,
+        jumpParams,
+        camera,
+        PARAMS,
+        moveDirection,
+        frontVector,
+        sideVector,
+        controls,
+        keys,
+        canJump,
+      );
+    else {
+      if (isSpectatorActive && controls.isLocked) {
+        responseCamera(camera, controls, delta, moveDirection, keys, velocity);
+      }
+    }
+
     renderer.render(scene, camera);
 
     stats.end();

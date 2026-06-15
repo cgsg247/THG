@@ -6,34 +6,34 @@ const physicsPairs = [];
 export { physicsPairs };
 
 export function create3dBodies(scene, world) {
-  // 5. Создаем физический пол
-  const floorSize = 100;
-  const floorThickness = 0.4;
+  // 1. Создаем физический пол
+  // const floorSize = 100;
+  // const floorThickness = 0.4;
 
-  const floorBodyDesc = RAPIER.RigidBodyDesc.fixed().setTranslation(
-    0,
-    -floorThickness / 2,
-    0,
-  );
-  const floorBody = world.createRigidBody(floorBodyDesc);
-  const floorColliderDesc = RAPIER.ColliderDesc.cuboid(
-    floorSize / 2,
-    floorThickness / 2,
-    floorSize / 2,
-  );
-  world.createCollider(floorColliderDesc, floorBody);
+  // const floorBodyDesc = RAPIER.RigidBodyDesc.fixed().setTranslation(
+  //   0,
+  //   -floorThickness / 2,
+  //   0,
+  // );
+  // const floorBody = world.createRigidBody(floorBodyDesc);
+  // const floorColliderDesc = RAPIER.ColliderDesc.cuboid(
+  //   floorSize / 2,
+  //   floorThickness / 2,
+  //   floorSize / 2,
+  // );
+  // world.createCollider(floorColliderDesc, floorBody);
 
-  const floorGeo = new THREE.BoxGeometry(floorSize, floorThickness, floorSize);
-  const floorMat = new THREE.MeshStandardMaterial({
-    color: 0x151515,
-    roughness: 0.9,
-  });
-  const floorMesh = new THREE.Mesh(floorGeo, floorMat);
-  floorMesh.position.y = -floorThickness / 2;
-  floorMesh.receiveShadow = true;
-  scene.add(floorMesh);
+  // const floorGeo = new THREE.BoxGeometry(floorSize, floorThickness, floorSize);
+  // const floorMat = new THREE.MeshStandardMaterial({
+  //   color: 0x151515,
+  //   roughness: 0.9,
+  // });
+  // const floorMesh = new THREE.Mesh(floorGeo, floorMat);
+  // floorMesh.position.y = -floorThickness / 2;
+  // floorMesh.receiveShadow = true;
+  // scene.add(floorMesh);
 
-  // 6. Создаем физический куб (Препятствие на карте)
+  // 2. Создаем физический куб
   const cubeGeo = new THREE.BoxGeometry(2, 2, 2);
   const cubeMat = new THREE.MeshStandardMaterial({
     color: 0x00ff00,
@@ -44,6 +44,13 @@ export function create3dBodies(scene, world) {
   cubeMesh.receiveShadow = true;
   scene.add(cubeMesh);
 
+  const cubeBodyDesc = RAPIER.RigidBodyDesc.dynamic().setTranslation(0, 6, -5);
+  const cubeBody = world.createRigidBody(cubeBodyDesc);
+  const cubeColliderDesc = RAPIER.ColliderDesc.cuboid(1, 1, 1);
+  world.createCollider(cubeColliderDesc, cubeBody);
+  physicsPairs.push({ mesh: cubeMesh, body: cubeBody });
+
+  // 2. Создаем физический шар
   const sphereRadius = 1;
   const sphereGeo = new THREE.SphereGeometry(sphereRadius, 32, 32);
   const sphereMat = new THREE.MeshStandardMaterial({
@@ -54,12 +61,6 @@ export function create3dBodies(scene, world) {
   sphereMesh.castShadow = true;
   sphereMesh.receiveShadow = true;
   scene.add(sphereMesh);
-
-  const cubeBodyDesc = RAPIER.RigidBodyDesc.dynamic().setTranslation(0, 6, -5);
-  const cubeBody = world.createRigidBody(cubeBodyDesc);
-  const cubeColliderDesc = RAPIER.ColliderDesc.cuboid(1, 1, 1);
-  world.createCollider(cubeColliderDesc, cubeBody);
-  physicsPairs.push({ mesh: cubeMesh, body: cubeBody });
 
   const sphereBodyDesc = RAPIER.RigidBodyDesc.dynamic().setTranslation(
     0,
@@ -73,16 +74,14 @@ export function create3dBodies(scene, world) {
 }
 
 export function createPlayer(world) {
-  // ==============================
-  // 7. СОЗДАЕМ ФИЗИЧЕСКОГО ИГРОКА
-  // ==============================
+  // ===========================
+  // СОЗДАЕМ ФИЗИЧЕСКОГО ИГРОКА
+  // ===========================
 
   // Физическое тело игрока (Капсула, чтобы не застревать в углах)
-  const playerBodyDesc = RAPIER.RigidBodyDesc.dynamic()
-    .setTranslation(0, 10, 0) // Старт над полом
-    .lockRotations(); // Запрещаем игроку падать на бок (очень важно!)
+  const playerBodyDesc = RAPIER.RigidBodyDesc.dynamic().setTranslation(0, 2, 0);
   const playerBody = world.createRigidBody(playerBodyDesc);
-  const playerColliderDesc = RAPIER.ColliderDesc.capsule(0.5, 0.5); // радиус 0.5, высота 1
+  const playerColliderDesc = RAPIER.ColliderDesc.capsule(0.5, 0.5);
   world.createCollider(playerColliderDesc, playerBody);
   return playerBody;
 }

@@ -51,6 +51,7 @@
 План готов к запуску! Каким будет ваш первый шаг — хотите сразу спроектировать структуру папок проекта для Vite и Node.js или начнем с написания кода для FPS-контроллера на R3F?
 
 ## -------------------------------------------------------------------------------------------------------
+
 ```markdown
 # Упрощенный 15-дневный план разработки кооперативного хоррора «Сигнал 0»
 
@@ -144,7 +145,7 @@ function runGame(RAPIER) {
     // 2. Сцена и камера
     const scene = new THREE.Scene();
     scene.background = new THREE.Color('#030303'); // Делаем бункер еще темнее
-    
+
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 
     // 3. Рендерер и тени
@@ -152,7 +153,7 @@ function runGame(RAPIER) {
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.shadowMap.enabled = true;
     // Исправление №2: используем актуальный PCFShadowMap
-    renderer.shadowMap.type = THREE.PCFShadowMap; 
+    renderer.shadowMap.type = THREE.PCFShadowMap;
     document.body.appendChild(renderer.domElement);
 
     // 4. Освещение (Направленный свет + слабый эмбиент)
@@ -199,7 +200,7 @@ function runGame(RAPIER) {
     // ==========================================
     // 7. СОЗДАЕМ ФИЗИЧЕСКОГО ИГРОКА И КАНАЛЫ УПРАВЛЕНИЯ
     // ==========================================
-    
+
     // Физическое тело игрока (Капсула, чтобы не застревать в углах)
     const playerBodyDesc = RAPIER.RigidBodyDesc.dynamic()
         .setTranslation(0, 2, 0) // Старт над полом
@@ -285,3 +286,5 @@ function runGame(RAPIER) {
     animate();
 }
 ```
+
+https://www.google.com/search?q=%D0%BA%D0%B0%D0%BA+%D0%B7%D0%B0%D0%B3%D1%80%D1%83%D0%B6%D0%B5%D0%BD%D0%BD%D1%8E%D1%83+glb+%D0%BC%D0%BE%D0%B4%D0%B5%D0%BB%D1%8C+%D1%81%D0%B4%D0%B5%D0%BB%D0%B0%D1%82%D1%8C+%D1%84%D0%B8%D0%B7%D0%B8%D1%87%D0%B5%D1%81%D0%BA%D0%BE%D0%B9+%D0%B2+three.js&rlz=1C1GCEA_enRU1216RU1216&oq=%D0%BA%D0%B0%D0%BA+%D0%B7%D0%B0%D0%B3%D1%80%D1%83%D0%B6%D0%B5%D0%BD%D0%BD%D1%8E%D1%83+glb+%D0%BC%D0%BE%D0%B4%D0%B5%D0%BB%D1%8C+%D1%81%D0%B4%D0%B5%D0%BB%D0%B0%D1%82%D1%8C+%D1%84%D0%B8%D0%B7%D0%B8%D1%87%D0%B5%D1%81%D0%BA%D0%BE%D0%B9+%D0%B2+three.js&gs_lcrp=EgZjaHJvbWUyBggAEEUYOTIHCAEQABjvBTIHCAIQABjvBTIHCAMQABjvBTIHCAQQABjvBTIHCAUQABjvBdIBCTYyNDM1ajBqN6gCALACAA&sourceid=chrome&ie=UTF-8&ved=2ahUKEwjD8-qR1IiVAxUjLRAIHZ9yIjAQ0NsOegoIAggACAEIEBAA&mstk=AUtExfDCPWa34p91QIgWq5BCrhHQGgC0vl_TlIrw51LoT6OJkYrHtSMbO7qOw7JadVLx9NyFKJZU298PUcrGzgqMV--kGMoBkhH2T2cxSFgOnRn2S48rFMyveSwPD3V56Qzc-PLyRzzBtUYwE8HBcURpG2Kp_SJSixB95Ko&csuir=1&udm=50
