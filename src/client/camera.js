@@ -28,53 +28,30 @@ export function spectatorMode(controls) {
   }
 }
 
-export function responseCamera(
-  camera,
-  controls,
-  delta,
-  moveDirection,
-  keys,
-  velocity,
-) {
+export function updateSpectatorCamera(camera, controls, delta, keys, PARAMS) {
   if (!isSpectatorActive || !controls.isLocked) return;
 
-  const FRICTION = 0.92;
-  const ACCELERATION = 50;
-  // 1. Применяем инерционное торможение
-  velocity.x *= FRICTION;
-  velocity.y *= FRICTION;
-  velocity.z *= FRICTION;
-
-  // 2. Рассчитываем вектор направления из нажатых клавиш
+  const moveDirection = new THREE.Vector3();
   moveDirection.z = Number(keys.w) - Number(keys.s);
-  moveDirection.x = Number(keys.d) - Number(keys.a);
-  moveDirection.y = Number(keys.space) - Number(keys.shift);
-  if (moveDirection.length() > 0) moveDirection.normalize();
+  moveDirection.x = Number(keys.a) - Number(keys.d);
 
-  // 3. Разгон вперед/назад с учетом направления взгляда камеры
-  if (keys.w || keys.s) {
-    const forward = new THREE.Vector3();
-    camera.getWorldDirection(forward);
-    velocity.addScaledVector(forward, moveDirection.z * ACCELERATION * delta);
+  if (moveDirection.length() > 0) {
+    moveDirection.normalize();
   }
 
-  // 4. Разгон влево/вправо с учетом направления взгляда камеры
-  if (keys.a || keys.d) {
-    const right = new THREE.Vector3();
-    right
-      .crossVectors(camera.up, camera.getWorldDirection(new THREE.Vector3()))
-      .negate();
-    velocity.addScaledVector(right, moveDirection.x * ACCELERATION * delta);
-  }
+  const forward = new THREE.Vector3();
+  camera.getWorldDirection(forward);
+  forward.y = 0;
+  forward.normalize();
 
-  // 5. Разгон строго по вертикали вверх/вниз
-  if (keys.space || keys.shift) {
-    velocity.y += moveDirection.y * ACCELERATION * delta;
-  }
+  const right = new THREE.Vector3();
+  right.crossVectors(camera.up, forward).normalize();
 
-  // 6. Ограничение максимальной скорости полета
-  velocity.clampLength(0, 15);
+  const moveVector = new THREE.Vector3();
+  moveVector.addScaledVector(forward, moveDirection.z);
+  moveVector.addScaledVector(right, moveDirection.x);
 
-  // 7. Смещение позиции камеры
-  camera.position.addScaledVector(velocity, delta);
+  let speed = PARAMS.speed;
+
+  camera.position.addScaledVector(moveVector, speed * delta);
 }

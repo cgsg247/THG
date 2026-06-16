@@ -33,7 +33,7 @@ export function MovePlayer(
       console.log("Прыжок");
       canJump = false;
     }
-    if (grounded) canJump = true; // защита от повторного прыжка
+    if (grounded && !keys.space && !canJump) canJump = true; // защита от повторного прыжка
 
     frontVector.set(0, 0, Number(keys.w) - Number(keys.s));
     sideVector.set(0, 0, Number(keys.d) - Number(keys.a));

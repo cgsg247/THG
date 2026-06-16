@@ -44,14 +44,14 @@ export function create3dBodies(scene, world) {
   cubeMesh.receiveShadow = true;
   scene.add(cubeMesh);
 
-  const cubeBodyDesc = RAPIER.RigidBodyDesc.dynamic().setTranslation(0, 6, -5);
+  const cubeBodyDesc = RAPIER.RigidBodyDesc.dynamic().setTranslation(0, 2, 3);
   const cubeBody = world.createRigidBody(cubeBodyDesc);
   const cubeColliderDesc = RAPIER.ColliderDesc.cuboid(1, 1, 1);
   world.createCollider(cubeColliderDesc, cubeBody);
   physicsPairs.push({ mesh: cubeMesh, body: cubeBody });
 
   // 2. Создаем физический шар
-  const sphereRadius = 1;
+  const sphereRadius = 0.3;
   const sphereGeo = new THREE.SphereGeometry(sphereRadius, 32, 32);
   const sphereMat = new THREE.MeshStandardMaterial({
     color: 0xff0000,
@@ -64,8 +64,8 @@ export function create3dBodies(scene, world) {
 
   const sphereBodyDesc = RAPIER.RigidBodyDesc.dynamic().setTranslation(
     0,
-    12,
-    -5,
+    1,
+    -1,
   );
   const sphereBody = world.createRigidBody(sphereBodyDesc);
   const sphereColliderDesc = RAPIER.ColliderDesc.ball(sphereRadius);
@@ -79,7 +79,9 @@ export function createPlayer(world) {
   // ===========================
 
   // Физическое тело игрока (Капсула, чтобы не застревать в углах)
-  const playerBodyDesc = RAPIER.RigidBodyDesc.dynamic().setTranslation(0, 2, 0);
+  const playerBodyDesc = RAPIER.RigidBodyDesc.dynamic()
+    .setTranslation(0, 2, 0)
+    .lockRotations();
   const playerBody = world.createRigidBody(playerBodyDesc);
   const playerColliderDesc = RAPIER.ColliderDesc.capsule(0.5, 0.5);
   world.createCollider(playerColliderDesc, playerBody);

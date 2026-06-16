@@ -1,9 +1,7 @@
 import * as THREE from "three";
-import { PointerLockControls } from "three/examples/jsm/controls/PointerLockControls.js";
 import RAPIER from "@dimforge/rapier3d-compat";
-import { Pane } from "tweakpane";
-import { loadModel } from "./model_load.js";
-import { GameMenu } from "./menu.js";
+import { loadModel, loadAnimModel, responseAnimModel } from "./model_load.js";
+import { isGameActive, isPaused, menuInit } from "./menu.js";
 import { MovePlayer } from "./player_move.js";
 import Stats from "stats.js";
 import {
@@ -14,19 +12,17 @@ import {
 } from "./flashlight.js";
 import { enableLight } from "./light.js";
 import { createPlayer, create3dBodies, physicsPairs } from "./physic_bodies.js";
-import {
-  initCamera,
-  spectatorMode,
-  responseCamera,
-  setSpectatorActive,
-} from "./camera.js";
+import { initCamera, updateSpectatorCamera } from "./camera.js";
+import { initUI, addUIParts } from "./ui.js";
+import { keyboardParser, keys } from "./keyboard.js";
+import { controls, pointerLockControl } from "./pointer_lock.js";
 
 RAPIER.init({}).then(() => {
   runGame(RAPIER);
 });
 
 function runGame(RAPIER) {
-  // Инициализация счетчика
+  // Инициализация счетчика статистики
   const stats = new Stats();
   Array.from(stats.dom.children).forEach((canvas) => {
     canvas.style.display = "block";
@@ -40,18 +36,19 @@ function runGame(RAPIER) {
 
   document.body.appendChild(stats.dom);
 
-  // 1. Физический мир
+  // Создание физического мира с гравитацией
   const g = -9.80665; // free-fall acceleration
   const gravity = { x: 0.0, y: g, z: 0.0 };
   const world = new RAPIER.World(gravity);
 
-  // 2. Сцена и камера
+  // Создание сцены
   const scene = new THREE.Scene();
   scene.background = new THREE.Color("#050505");
 
+  // Инициализация камеры
   const camera = initCamera();
 
-  // 3. Рендерер и тени
+  // Рендерер и тени
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.shadowMap.enabled = true;
@@ -60,208 +57,61 @@ function runGame(RAPIER) {
 
   // Загрузка модели окружения (Backrooms)
   loadModel(scene, "./assets/models/backrooms_vr18.glb", world);
+  // Загрузка анимированной модели
+  loadAnimModel(scene, "./assets/models/walking.glb");
 
+  // Освещение (Dir + Ambient + FlashLight (фонарик))
   createFlashlight(scene, camera);
   createFlashlightUI();
   enableFlashlightUI();
   enableLight(scene);
 
   // Создаем физичсекие 3д тела (куб и сфера)
-  // create3dBodies(scene, world);
+  create3dBodies(scene, world);
+
   // Создаем физического игрока
   const playerBody = createPlayer(world);
 
-  // Подключаем управление мышью от первого лица
-  const controls = new PointerLockControls(camera, document.body);
-
-  // ==========================================
-  // ИНИЦИАЛИЗАЦИЯ МЕНЮ
-  // ==========================================
-  const gameMenu = new GameMenu();
-  let isGameActive = false,
-    isPaused = false;
-
-  gameMenu.onStart(() => {
-    gameMenu.hideMain();
-    isGameActive = true;
-    isPaused = false;
-  });
-
-  gameMenu.onResume(() => {
-    gameMenu.hidePause();
-    isPaused = false;
-    isGameActive = true;
-  });
-
-  gameMenu.onExit(() => {
-    gameMenu.showMain();
-    isGameActive = isPaused = false;
-    if (controls.isLocked) controls.unlock();
-    gameMenu.reset(playerBody, controls);
-  });
-
-  gameMenu.onEscape(
-    () => {
-      if (isGameActive && !isPaused) {
-        gameMenu.showPause();
-        isPaused = true;
-        isGameActive = false;
-        if (controls.isLocked) controls.unlock();
-      }
-    },
-    () => {
-      gameMenu.hidePause();
-      isPaused = false;
-      isGameActive = true;
-    },
-  );
-
-  gameMenu.showMain();
-
-  // ==========================================
-  // НАСТРОЙКИ UI
-  // ==========================================
-  const pane = new Pane({
-    title: "Geometry control",
-    container: document.getElementById("panel"),
-  });
-
-  // Блокируем всплытие событий на панели
-  const panelDiv = document.getElementById("panel");
-  if (panelDiv) {
-    panelDiv.addEventListener("mousedown", (e) => e.stopPropagation());
-    panelDiv.addEventListener("mouseup", (e) => e.stopPropagation());
-  }
-
-  // Обработчик для UI панели
-  pane.on("change", () => {
-    if (controls && controls.isLocked) {
-      controls.unlock();
-    }
-  });
-
-  // ==========================================
+  // ===============================
   // Обработка событий Pointer Lock
-  // ==========================================
+  // ===============================
 
-  // Глобальный флаг для отслеживания состояния блокировки
-  let isPointerLocked = false;
+  pointerLockControl(camera);
+  // Подключаем управление мышью от первого лица
+  // const controls = new PointerLockControls(camera, document.body);
 
-  // Обработчики событий Pointer Lock
-  controls.domElement.addEventListener("pointerlockchange", () => {
-    if (!controls.isLocked) {
-      setSpectatorActive(false);
-      velocity.set(0, 0, 0);
-      Object.keys(keys).forEach((k) => (keys[k] = false));
-    }
-    isPointerLocked = controls.isLocked;
-    console.log("Pointer lock changed:", isPointerLocked);
-  });
+  // // Глобальный флаг для отслеживания состояния блокировки
+  // let isPointerLocked = false;
 
-  controls.domElement.addEventListener("pointerlockerror", () => {
-    console.log("Pointer lock failed, will retry on next click");
-  });
+  // // Обработчики событий Pointer Lock
+  // controls.domElement.addEventListener("pointerlockchange", () => {
+  //   if (!controls.isLocked) {
+  //     setSpectatorActive(false);
+  //     Object.keys(keys).forEach((k) => (keys[k] = false));
+  //   }
+  //   isPointerLocked = controls.isLocked;
+  //   console.log("Pointer lock changed:", isPointerLocked);
+  // });
 
-  window.addEventListener("click", () => {
-    if (isGameActive && !isPaused && !controls.isLocked) {
-      setTimeout(() => {
-        try {
-          controls.lock();
-        } catch (error) {
-          console.warn("Failed to lock:", error);
-        }
-      }, 50);
-    }
-  });
+  // controls.domElement.addEventListener("pointerlockerror", () => {
+  //   console.log("Pointer lock failed, will retry on next click");
+  // });
 
-  const velocity = new THREE.Vector3();
-  const clock = new THREE.Timer();
-  timer.connect(document);
+  // Инициализация меню
+  menuInit(controls);
 
-  // Обработка клавиатуры
-  const keys = {
-    w: false,
-    a: false,
-    s: false,
-    d: false,
-    space: false,
-    shift: false,
-    f1: false,
-  };
-  window.addEventListener("keydown", (e) => {
-    const key = e.key.toLowerCase();
-    const code = e.code;
+  // =============
+  // НАСТРОЙКИ UI
+  // =============
 
-    if (!isGameActive || isPaused) return;
-
-    if (key === "w" || key === "ц" || code === "KeyW") keys.w = true;
-    if (key === "a" || key === "ф" || code === "KeyA") keys.a = true;
-    if (key === "s" || key === "ы" || code === "KeyS") keys.s = true;
-    if (key === "d" || key === "в" || code === "KeyD") keys.d = true;
-
-    if (code === "Space" || key === " ") {
-      keys.space = true;
-      e.preventDefault();
-    }
-    if (code === "Shift" || e.shiftKey) {
-      keys.shift = true;
-      e.preventDefault();
-    }
-    if (e.code === "KeyF1" || e.key === "f1") {
-      keys.f1 = true;
-      e.preventDefault();
-      spectatorMode(controls);
-    }
-  });
-  window.addEventListener("keyup", (e) => {
-    const key = e.key.toLowerCase();
-    const code = e.code;
-
-    if (!isGameActive || isPaused) return;
-
-    if (key === "w" || key === "ц" || code === "KeyW") keys.w = false;
-    if (key === "a" || key === "ф" || code === "KeyA") keys.a = false;
-    if (key === "s" || key === "ы" || code === "KeyS") keys.s = false;
-    if (key === "d" || key === "в" || code === "KeyD") keys.d = false;
-
-    if (code === "Space" || key === " ") {
-      keys.space = false;
-      e.preventDefault();
-    }
-    if (code === "Shift" || e.shiftKey) {
-      keys.shift = false;
-      e.preventDefault();
-    }
-    if (code === "KeyF1" || key === "f1") {
-      keys.f1 = false;
-      e.preventDefault();
-    }
-  });
-  window.addEventListener("blur", () => {
-    if (isGameActive && !isPaused && controls.isLocked) {
-      gameMenu.showPause();
-      isPaused = true;
-      isGameActive = false;
-      if (controls.isLocked) controls.unlock();
-    }
-  });
-
-  // Векторы для расчета направления движения
-  const moveDirection = new THREE.Vector3();
-  const frontVector = new THREE.Vector3();
-  const sideVector = new THREE.Vector3();
+  // Инициализация UI TweakPane
+  initUI(controls);
 
   // Параметры скорости игрока
   const PARAMS = {
     speed: 6,
     boost: 2,
   };
-
-  pane.addBinding(PARAMS, "speed", {
-    min: 0.1,
-    max: 20,
-    step: 0.05,
-  });
 
   // Параметры прыжка игрока
   const jumpParams = {
@@ -270,29 +120,34 @@ function runGame(RAPIER) {
     playerHeight: 0.8,
   };
 
-  pane.addBinding(jumpParams, "force", { min: 3, max: 10, step: 0.1 });
-  pane.addBinding(jumpParams, "groundCheck", {
-    min: 0.5,
-    max: 1.2,
-    step: 0.05,
-  });
-  pane.addBinding(jumpParams, "playerHeight", {
-    min: 0.1,
-    max: 1.0,
-    step: 0.05,
-  });
+  // Добавление binding в UI TweakPane
+  addUIParts(PARAMS, jumpParams);
+
+  // Таймер
+  const timer = new THREE.Timer();
+  timer.connect(document);
+
+  // Обработка клавиатуры
+  keyboardParser(controls);
+
+  // Векторы для расчета направления движения
+  const moveDirection = new THREE.Vector3();
+  const frontVector = new THREE.Vector3();
+  const sideVector = new THREE.Vector3();
 
   let canJump = true;
 
-  // 8. Игровой цикл
+  // Игровой цикл
   function animate() {
     requestAnimationFrame(animate);
     timer.update();
     const delta = timer.getDelta();
 
-    stats.begin();
-
-    if (!isGameActive || isPaused) {
+    if (isGameActive && !isPaused) {
+      stats.dom.style.display = "block";
+      stats.begin();
+    } else {
+      stats.dom.style.display = "none";
       renderer.render(scene, camera);
       return;
     }
@@ -313,7 +168,10 @@ function runGame(RAPIER) {
       pair.mesh.quaternion.set(rotation.x, rotation.y, rotation.z, rotation.w);
     });
 
-    if (!keys.f1)
+    // Обновление анимированной модели
+    responseAnimModel(delta);
+
+    if (!keys.f2) {
       MovePlayer(
         world,
         playerBody,
@@ -327,9 +185,9 @@ function runGame(RAPIER) {
         keys,
         canJump,
       );
-    else {
-      if (isSpectatorActive && controls.isLocked) {
-        responseCamera(camera, controls, delta, moveDirection, keys, velocity);
+    } else {
+      if (controls.isLocked) {
+        updateSpectatorCamera(camera, controls, delta, keys, PARAMS);
       }
     }
 

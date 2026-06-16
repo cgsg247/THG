@@ -1,4 +1,4 @@
-export class GameMenu {
+class GameMenu {
   constructor() {
     this.main = document.getElementById("main-menu");
     this.pause = document.getElementById("pause-menu");
@@ -53,4 +53,58 @@ export class GameMenu {
     }
     if (controls && controls.isLocked) controls.unlock();
   }
+}
+
+// ==========================================
+// ИНИЦИАЛИЗАЦИЯ МЕНЮ
+// ==========================================
+export const gameMenu = new GameMenu();
+export let isGameActive = false;
+export let isPaused = false;
+
+export function setIsGameActive(value) {
+  isGameActive = value;
+}
+
+export function setIsPaused(value) {
+  isPaused = value;
+}
+
+export function menuInit(controls) {
+  gameMenu.onStart(() => {
+    gameMenu.hideMain();
+    isGameActive = true;
+    isPaused = false;
+  });
+
+  gameMenu.onResume(() => {
+    gameMenu.hidePause();
+    isPaused = false;
+    isGameActive = true;
+  });
+
+  gameMenu.onExit(() => {
+    gameMenu.showMain();
+    isGameActive = isPaused = false;
+    if (controls.isLocked) controls.unlock();
+    gameMenu.reset(playerBody, controls);
+  });
+
+  gameMenu.onEscape(
+    () => {
+      if (isGameActive && !isPaused) {
+        gameMenu.showPause();
+        isPaused = true;
+        isGameActive = false;
+        if (controls.isLocked) controls.unlock();
+      }
+    },
+    () => {
+      gameMenu.hidePause();
+      isPaused = false;
+      isGameActive = true;
+    },
+  );
+
+  gameMenu.showMain();
 }

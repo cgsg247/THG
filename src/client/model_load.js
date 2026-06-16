@@ -1,51 +1,12 @@
-// import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-// import RAPIER from "@dimforge/rapier3d-compat";
-
-// export function loadModel(scene, path, world) {
-//   const loader = new GLTFLoader();
-//   loader.load(
-//     path,
-//     (gltf) => {
-//       const model = gltf.scene;
-//       scene.add(model);
-
-//       const modelBodyDesc = RAPIER.RigidBodyDesc.fixed();
-//       const modelBody = world.createRigidBody(modelBodyDesc);
-
-//       model.traverse((child) => {
-//         if (child.isMesh) {
-//           child.castShadow = true;
-//           child.receiveShadow = true;
-
-//           const geometry = child.geometry;
-//           const vertices = geometry.attributes.position.array;
-//           const indices = geometry.index ? geometry.index.array : null;
-
-//           const modelColliderDesc = RAPIER.ColliderDesc.trimesh(
-//             vertices,
-//             indices,
-//           );
-//           world.createCollider(modelColliderDesc, modelBody);
-//         }
-//       });
-
-//       console.log(`Модель ${path} загружена`);
-//     },
-//     (progress) => {
-//       const percent = (progress.loaded / progress.total) * 100;
-//       console.log(`загрузка: ${Math.round(percent)}%`);
-//     },
-//     (error) => {
-//       console.error("Ошибка загрузки модели:", error);
-//     },
-//   );
-// }
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import RAPIER from "@dimforge/rapier3d-compat";
 
+export let mixer;
+
 export function loadModel(scene, path, world) {
   const loader = new GLTFLoader();
+
   loader.load(
     path,
     (gltf) => {
@@ -96,4 +57,34 @@ export function loadModel(scene, path, world) {
       console.error("Ошибка загрузки модели:", error);
     },
   );
+}
+
+export function loadAnimModel(scene, path) {
+  const loader = new GLTFLoader();
+
+  loader.load(
+    path,
+    (gltf) => {
+      const model = gltf.scene;
+      scene.add(model);
+
+      mixer = new THREE.AnimationMixer(gltf.scene);
+
+      const action = mixer.clipAction(gltf.animations[0]);
+      action.play();
+
+      console.log(`Модель ${path} загружена`);
+    },
+    (progress) => {
+      const percent = (progress.loaded / progress.total) * 100;
+      console.log(`загрузка: ${Math.round(percent)}%`);
+    },
+    (error) => {
+      console.error("Ошибка загрузки модели:", error);
+    },
+  );
+}
+
+export function responseAnimModel(delta) {
+  if (mixer) mixer.update(delta);
 }
