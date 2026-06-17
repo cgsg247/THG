@@ -1,170 +1,235 @@
-import * as THREE from 'three';
-import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
-import RAPIER from '@dimforge/rapier3d-compat';
+import * as THREE from "three";
+import RAPIER from "@dimforge/rapier3d-compat";
+import { loadModel, loadAnimModel, responseAnimModel } from "./model_load.js";
+import {
+  isGameActive,
+  isPaused,
+  menuInit,
+  gameMenu,
+  setIsGameActive,
+  setIsPaused,
+} from "./menu.js";
+import { MovePlayer } from "./player_move.js";
+import Stats from "stats.js";
+import {
+  createFlashlight,
+  createFlashlightUI,
+  enableFlashlightUI,
+  updateFlashlightPosition,
+} from "./flashlight.js";
+import { enableLight } from "./light.js";
+import { createPlayer, create3dBodies, physicsPairs } from "./physic_bodies.js";
+import { initCamera, updateSpectatorCamera } from "./camera.js";
+import { initUI, addUIParts } from "./ui.js";
+import { keyboardParser, keys } from "./keyboard.js";
+import { controls, pointerLockControl } from "./pointer_lock.js";
+import { initAudio } from "./audio.js";
+import { LoadingManager } from "./loading.js";
+import { showStory, startVideo } from "./story.js";
 
 RAPIER.init({}).then(() => {
-    runGame(RAPIER);
+  runGame(RAPIER);
 });
 
 function runGame(RAPIER) {
-    // 1. Physical world
-    const g = -9.80665; // free-fall acceleration
-    const gravity = { x: 0.0, y: g, z: 0.0 };
-    const world = new RAPIER.World(gravity);
+  // Initializing statistics counter
+  const stats = new Stats();
+  Array.from(stats.dom.children).forEach((canvas) => {
+    canvas.style.display = "block";
+    canvas.style.float = "left";
+    canvas.style.marginRight = "5px";
+  });
 
-    // 2. Stage and camera
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color('#050505');
+  stats.dom.style.top = "10px";
+  stats.dom.style.left = "10px";
+  stats.dom.style.width = "auto";
 
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+  document.body.appendChild(stats.dom);
 
-    // 3. Renderer and shadows
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFShadowMap;
-    document.body.appendChild(renderer.domElement);
+  // Creating a physical world with gravity
+  const g = -9.80665; // free-fall acceleration
+  const gravity = { x: 0.0, y: g, z: 0.0 };
+  const world = new RAPIER.World(gravity);
 
-    // 4. Lighting (Directional light + low ambient)
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.05);
-    scene.add(ambientLight);
+  // Create scene
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color("#050505");
 
-    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    dirLight.position.set(10, 20, 10);
-    dirLight.castShadow = true;
-    dirLight.shadow.mapSize.width = 1024;
-    dirLight.shadow.mapSize.height = 1024;
-    scene.add(dirLight);
+  // Camera initialization
+  const camera = initCamera();
 
-    // Array for synchronizing physics with graphics
-    const physicsPairs = [];
+  // Renderer and shadows
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFShadowMap;
+  document.body.appendChild(renderer.domElement);
 
-    // 5. Creating a physical floor
-    const floorGeo = new THREE.PlaneGeometry(50, 50);
-    const floorMat = new THREE.MeshStandardMaterial({ color: 0x151515, roughness: 0.9 });
-    const floorMesh = new THREE.Mesh(floorGeo, floorMat);
-    floorMesh.rotation.x = -Math.PI / 2;
-    floorMesh.receiveShadow = true;
-    scene.add(floorMesh);
+  // Lighting (Dir + Ambient + FlashLight)
+  createFlashlight(scene, camera);
+  createFlashlightUI();
+  enableFlashlightUI();
+  enableLight(scene);
 
-    const floorBodyDesc = RAPIER.RigidBodyDesc.fixed().setTranslation(0, 0, 0);
-    const floorBody = world.createRigidBody(floorBodyDesc);
-    const floorColliderDesc = RAPIER.ColliderDesc.cuboid(25, 0.1, 25);
-    world.createCollider(floorColliderDesc, floorBody);
+  // Creating physical 3D bodies (cube and sphere)
+  // create3dBodies(scene, world);
 
-    // 6. Create a physical cube and a ball (Obstacle on the map)
-    const cubeGeo = new THREE.BoxGeometry(2, 2, 2);
-    const cubeMat = new THREE.MeshStandardMaterial({ color: 0x00ff00, roughness: 0.5 });
-    const cubeMesh = new THREE.Mesh(cubeGeo, cubeMat);
-    cubeMesh.castShadow = true;
-    cubeMesh.receiveShadow = true;
-    scene.add(cubeMesh);
+  // Create physical player
+  const playerBody = createPlayer(world);
 
-    const sphereRadius = 1;
-    const sphereGeo = new THREE.SphereGeometry(sphereRadius, 32, 32);
-    const sphereMat = new THREE.MeshStandardMaterial({ color: 0xff0000, roughness: 0.5 });
-    const sphereMesh = new THREE.Mesh(sphereGeo, sphereMat);
-    sphereMesh.castShadow = true;
-    sphereMesh.receiveShadow = true;
-    scene.add(sphereMesh);
+  // Handling Pointer Lock Events
+  pointerLockControl(camera);
 
-    const cubeBodyDesc = RAPIER.RigidBodyDesc.dynamic().setTranslation(0, 6, -5);
-    const cubeBody = world.createRigidBody(cubeBodyDesc);
-    const cubeColliderDesc = RAPIER.ColliderDesc.cuboid(1, 1, 1);
-    world.createCollider(cubeColliderDesc, cubeBody);
-    physicsPairs.push({ mesh: cubeMesh, body: cubeBody });
+  const loadingManager = new LoadingManager();
 
-    const sphereBodyDesc = RAPIER.RigidBodyDesc.dynamic().setTranslation(0, 12, -5);
-    const sphereBody = world.createRigidBody(sphereBodyDesc);
-    const sphereColliderDesc = RAPIER.ColliderDesc.ball(sphereRadius);
-    world.createCollider(sphereColliderDesc, sphereBody);
-    physicsPairs.push({ mesh: sphereMesh, body: sphereBody });
+  async function startGameLoading() {
+    loadingManager.addTask(
+      (onProgress) =>
+        loadModel(
+          scene,
+          "./assets/models/backrooms_vr18_compressed.glb",
+          world,
+          { x: 0, y: 0, z: 0 },
+          onProgress,
+        ),
+      "Enviroment",
+    );
+    loadingManager.addTask(
+      (onProgress) =>
+        loadAnimModel(scene, "./assets/models/walking.glb", onProgress),
+      "Animation",
+    );
+    loadingManager.addTask(
+      (onProgress) => initAudio(scene, camera, onProgress),
+      "Sound",
+    );
 
-    // ==========================================
-    // 7. CREATING A PHYSICAL PLAYER AND CONTROL CHANNELS
-    // ==========================================
+    await loadingManager.start();
 
-    // Player's physical body (Capsule to avoid getting stuck in corners)
-    const playerBodyDesc = RAPIER.RigidBodyDesc.dynamic()
-        .setTranslation(0, 0, 0) // Start position
-        .lockRotations();        // Prevents the player from falling on his side
-    const playerBody = world.createRigidBody(playerBodyDesc);
-    const playerColliderDesc = RAPIER.ColliderDesc.capsule(0.5, 0.5); // radius 0.5, height 0.5
-    world.createCollider(playerColliderDesc, playerBody);
+    setIsGameActive(true);
+    setIsPaused(false);
+    if (!controls.isLocked) {
+      controls.lock();
+    }
+  }
 
-    // Enable first-person mouse control
-    const controls = new PointerLockControls(camera, renderer.domElement);
+  gameMenu.onStart(() => {
+    document.getElementById("main-menu").style.display = "none";
 
-    // Activate mouse capture when clicking on the game screen
-    window.addEventListener('click', () => {
-        controls.lock();
+    showStory(() => {
+      startVideo(() => {
+        startGameLoading();
+      });
     });
+  });
 
-    // Handling the WASD keyboard
-    const keys = { w: false, a: false, s: false, d: false };
-    window.addEventListener('keydown', (e) => { if (e.key.toLowerCase() in keys) keys[e.key.toLowerCase()] = true; });
-    window.addEventListener('keyup', (e) => { if (e.key.toLowerCase() in keys) keys[e.key.toLowerCase()] = false; });
+  // Menu initialization
+  menuInit(controls);
 
-    // Vectors for calculating the direction of movement
-    const moveDirection = new THREE.Vector3();
-    const frontVector = new THREE.Vector3();
-    const sideVector = new THREE.Vector3();
-    const speed = 6; // Player walking speed
+  // =============
+  // UI SETTINGS
+  // =============
 
-    // 8. Game loop
-    function animate() {
-        requestAnimationFrame(animate);
+  // Initialization UI TweakPane
+  initUI(controls);
 
-        // Step of the physical world
-        world.step();
+  // Player speed ​​parametrs
+  const PARAMS = {
+    speed: 6,
+    boost: 2,
+  };
 
-        // Synchronize the physical bodies (our green cube) with the graphics
-        physicsPairs.forEach(pair => {
-            const position = pair.body.translation();
-            const rotation = pair.body.rotation();
-            pair.mesh.position.set(position.x, position.y, position.z);
-            pair.mesh.quaternion.set(rotation.x, rotation.y, rotation.z, rotation.w);
-        });
+  // Player jump parameters
+  const jumpParams = {
+    force: 5.5,
+    groundCheck: 1.2,
+    playerHeight: 0.8,
+  };
 
-        // PLAYER MOVEMENT LOGIC (Only if the mouse cursor is captured by the game)
-        if (controls.isLocked) {
-            // Calculate the forward/backward vector based on the camera's viewing direction
-            frontVector.set(0, 0, Number(keys.w) - Number(keys.s));
-            // Calculate the left/right vector
-            sideVector.set(0, 0, Number(keys.d) - Number(keys.a));
+  // Adding a binding to UI TweakPane
+  addUIParts(PARAMS, jumpParams);
 
-            // Project the movements onto the floor plane (so the player doesn't fly up while looking at the sky)
-            camera.getWorldDirection(moveDirection);
-            moveDirection.y = 0;
-            moveDirection.normalize();
+  // Timer
+  const timer = new THREE.Timer();
+  timer.connect(document);
 
-            // Create the final velocity vector
-            const targetVelocityX = (moveDirection.x * frontVector.z + camera.up.clone().cross(moveDirection).negate().x * sideVector.z) * speed;
-            const targetVelocityZ = (moveDirection.z * frontVector.z + camera.up.clone().cross(moveDirection).negate().z * sideVector.z) * speed;
+  // Keyboard parsing
+  keyboardParser(controls);
 
-            // Store the current gravity on the Y axis so the player can fall
-            const currentYVelocity = playerBody.linvel().y;
+  // Vectors for calculating the direction of movement
+  const moveDirection = new THREE.Vector3();
+  const frontVector = new THREE.Vector3();
+  const sideVector = new THREE.Vector3();
 
-            // Apply velocity to the player's physical body
-            playerBody.setLinvel({ x: targetVelocityX, y: currentYVelocity, z: targetVelocityZ }, true);
-        } else {
-            // If the game is paused (the cursor is released), the player stops, but continues to fall under gravity
-            playerBody.setLinvel({ x: 0, y: playerBody.linvel().y, z: 0 }, true);
-        }
+  // Can jump flag
+  let canJump = true;
 
-        // Bind the camera position to the physical coordinates of the player's body (at eye level)
-        const playerPos = playerBody.translation();
-        camera.position.set(playerPos.x, playerPos.y + 0.8, playerPos.z);
+  // Game loop
+  function animate() {
+    requestAnimationFrame(animate);
 
-        renderer.render(scene, camera);
+    timer.update();
+    const delta = timer.getDelta();
+
+    if (isGameActive && !isPaused) {
+      stats.dom.style.display = "block";
+      stats.begin();
+    } else {
+      stats.dom.style.display = "none";
+      renderer.render(scene, camera);
+      return;
     }
 
-    // Resizing the window
-    window.addEventListener('resize', () => {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
+    // Update the flashlight direction
+    if (isGameActive && !isPaused) {
+      updateFlashlightPosition(camera);
+    }
+
+    // Step of physical world
+    world.step();
+
+    // Synchronize physical bodies with graphics
+    physicsPairs.forEach((pair) => {
+      const position = pair.body.translation();
+      const rotation = pair.body.rotation();
+      pair.mesh.position.set(position.x, position.y, position.z);
+      pair.mesh.quaternion.set(rotation.x, rotation.y, rotation.z, rotation.w);
     });
 
-    animate();
+    // Update animated model
+    responseAnimModel(delta);
+
+    if (!keys.f2) {
+      MovePlayer(
+        world,
+        playerBody,
+        jumpParams,
+        camera,
+        PARAMS,
+        moveDirection,
+        frontVector,
+        sideVector,
+        controls,
+        keys,
+        canJump,
+      );
+    } else {
+      if (controls.isLocked) {
+        updateSpectatorCamera(camera, controls, delta, keys, PARAMS);
+      }
+    }
+
+    renderer.render(scene, camera);
+
+    stats.end();
+  }
+
+  // Resizing window
+  window.addEventListener("resize", () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  animate();
 }
