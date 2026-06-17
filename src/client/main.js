@@ -1,7 +1,14 @@
 import * as THREE from "three";
 import RAPIER from "@dimforge/rapier3d-compat";
 import { loadModel, loadAnimModel, responseAnimModel } from "./model_load.js";
-import { isGameActive, isPaused, menuInit } from "./menu.js";
+import {
+  isGameActive,
+  isPaused,
+  menuInit,
+  gameMenu,
+  setIsGameActive,
+  setIsPaused,
+} from "./menu.js";
 import { MovePlayer } from "./player_move.js";
 import Stats from "stats.js";
 import {
@@ -17,6 +24,8 @@ import { initUI, addUIParts } from "./ui.js";
 import { keyboardParser, keys } from "./keyboard.js";
 import { controls, pointerLockControl } from "./pointer_lock.js";
 import { initAudio } from "./audio.js";
+import { LoadingManager } from "./loading.js";
+import { showStory, startVideo } from "./story.js";
 
 RAPIER.init({}).then(() => {
   runGame(RAPIER);
@@ -56,21 +65,6 @@ function runGame(RAPIER) {
   renderer.shadowMap.type = THREE.PCFShadowMap;
   document.body.appendChild(renderer.domElement);
 
-  // Loading environment model (Backrooms)
-  loadModel(scene, "./assets/models/backrooms_vr18_compressed.glb", world, {
-    x: 0,
-    y: 0,
-    z: 0,
-  });
-  // loadModel(scene, "./assets/models/studio_fixed.glb", world, {
-  //   x: 10,
-  //   y: 10,
-  //   z: 10,
-  // });
-  // Loading animated model
-  //loadAnimModel(scene, "./assets/models/skin_stealer.glb");
-  //loadAnimModel(scene, "./assets/models/walking_compressed.glb");
-
   // Lighting (Dir + Ambient + FlashLight)
   createFlashlight(scene, camera);
   createFlashlightUI();
@@ -85,6 +79,49 @@ function runGame(RAPIER) {
 
   // Handling Pointer Lock Events
   pointerLockControl(camera);
+
+  const loadingManager = new LoadingManager();
+
+  async function startGameLoading() {
+    loadingManager.addTask(
+      (onProgress) =>
+        loadModel(
+          scene,
+          "./assets/models/backrooms_vr18_compressed.glb",
+          world,
+          { x: 0, y: 0, z: 0 },
+          onProgress,
+        ),
+      "Enviroment",
+    );
+    loadingManager.addTask(
+      (onProgress) =>
+        loadAnimModel(scene, "./assets/models/walking.glb", onProgress),
+      "Animation",
+    );
+    loadingManager.addTask(
+      (onProgress) => initAudio(scene, camera, onProgress),
+      "Sound",
+    );
+
+    await loadingManager.start();
+
+    setIsGameActive(true);
+    setIsPaused(false);
+    if (!controls.isLocked) {
+      controls.lock();
+    }
+  }
+
+  gameMenu.onStart(() => {
+    document.getElementById("main-menu").style.display = "none";
+
+    showStory(() => {
+      startVideo(() => {
+        startGameLoading();
+      });
+    });
+  });
 
   // Menu initialization
   menuInit(controls);
@@ -126,13 +163,6 @@ function runGame(RAPIER) {
 
   // Can jump flag
   let canJump = true;
-
-  // =============
-  // SOUND
-  // =============
-
-  // Инициализация звука
-  initAudio(scene, camera);
 
   // Game loop
   function animate() {

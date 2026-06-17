@@ -1,3 +1,4 @@
+// Menu class
 class GameMenu {
   constructor() {
     this.main = document.getElementById("main-menu");
@@ -71,12 +72,6 @@ export function setIsPaused(value) {
 }
 
 export function menuInit(controls) {
-  gameMenu.onStart(() => {
-    gameMenu.hideMain();
-    isGameActive = true;
-    isPaused = false;
-  });
-
   gameMenu.onResume(() => {
     gameMenu.hidePause();
     isPaused = false;
