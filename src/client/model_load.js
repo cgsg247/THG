@@ -1,11 +1,22 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
 import RAPIER from "@dimforge/rapier3d-compat";
 
 export let mixer;
+// export let isWireframe;
 
-export function loadModel(scene, path, world) {
+THREE.Cache.enabled = true;
+
+const dracoLoader = new DRACOLoader();
+dracoLoader.setDecoderPath(
+  "https://www.gstatic.com/draco/versioned/decoders/1.5.6/",
+);
+dracoLoader.setDecoderConfig({ type: "wasm" });
+
+export function loadModel(scene, path, world, translate) {
   const loader = new GLTFLoader();
+  loader.setDRACOLoader(dracoLoader);
 
   loader.load(
     path,
@@ -37,7 +48,11 @@ export function loadModel(scene, path, world) {
           }
 
           const meshBodyDesc = RAPIER.RigidBodyDesc.fixed()
-            .setTranslation(pos.x, pos.y, pos.z)
+            .setTranslation(
+              pos.x + translate.x,
+              pos.y + translate.y,
+              pos.z + translate.z,
+            )
             .setRotation(rot);
           const meshBody = world.createRigidBody(meshBodyDesc);
           const colliderDesc = RAPIER.ColliderDesc.trimesh(
@@ -50,7 +65,8 @@ export function loadModel(scene, path, world) {
       console.log(`Модель ${path} загружена`);
     },
     (progress) => {
-      const percent = (progress.loaded / progress.total) * 100;
+      const total = progress.total || 50000000;
+      const percent = (progress.loaded / total) * 100;
       console.log(`загрузка: ${Math.round(percent)}%`);
     },
     (error) => {
@@ -61,6 +77,7 @@ export function loadModel(scene, path, world) {
 
 export function loadAnimModel(scene, path) {
   const loader = new GLTFLoader();
+  loader.setDRACOLoader(dracoLoader);
 
   loader.load(
     path,
@@ -70,13 +87,16 @@ export function loadAnimModel(scene, path) {
 
       mixer = new THREE.AnimationMixer(gltf.scene);
 
-      const action = mixer.clipAction(gltf.animations[0]);
-      action.play();
+      if (gltf.animations.length > 0) {
+        const action = mixer.clipAction(gltf.animations[0]);
+        action.play();
+      }
 
       console.log(`Модель ${path} загружена`);
     },
     (progress) => {
-      const percent = (progress.loaded / progress.total) * 100;
+      const total = progress.total || 50000000;
+      const percent = (progress.loaded / total) * 100;
       console.log(`загрузка: ${Math.round(percent)}%`);
     },
     (error) => {
@@ -88,3 +108,15 @@ export function loadAnimModel(scene, path) {
 export function responseAnimModel(delta) {
   if (mixer) mixer.update(delta);
 }
+
+// export function switchWireframe(scene) {
+//   scene.traverse((object) => {
+//     if (object.isMesh) {
+//       if (Array.isArray(object.material)) {
+//         object.material.forEach((mat) => (mat.wireframe = isWireframe));
+//       } else {
+//         object.material.wireframe = isWireframe;
+//       }
+//     }
+//   });
+// }

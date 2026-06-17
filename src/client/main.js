@@ -16,13 +16,14 @@ import { initCamera, updateSpectatorCamera } from "./camera.js";
 import { initUI, addUIParts } from "./ui.js";
 import { keyboardParser, keys } from "./keyboard.js";
 import { controls, pointerLockControl } from "./pointer_lock.js";
+import { initAudio } from "./audio.js";
 
 RAPIER.init({}).then(() => {
   runGame(RAPIER);
 });
 
 function runGame(RAPIER) {
-  // Инициализация счетчика статистики
+  // Initializing statistics counter
   const stats = new Stats();
   Array.from(stats.dom.children).forEach((canvas) => {
     canvas.style.display = "block";
@@ -36,110 +37,107 @@ function runGame(RAPIER) {
 
   document.body.appendChild(stats.dom);
 
-  // Создание физического мира с гравитацией
+  // Creating a physical world with gravity
   const g = -9.80665; // free-fall acceleration
   const gravity = { x: 0.0, y: g, z: 0.0 };
   const world = new RAPIER.World(gravity);
 
-  // Создание сцены
+  // Create scene
   const scene = new THREE.Scene();
   scene.background = new THREE.Color("#050505");
 
-  // Инициализация камеры
+  // Camera initialization
   const camera = initCamera();
 
-  // Рендерер и тени
+  // Renderer and shadows
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFShadowMap;
   document.body.appendChild(renderer.domElement);
 
-  // Загрузка модели окружения (Backrooms)
-  loadModel(scene, "./assets/models/backrooms_vr18.glb", world);
-  // Загрузка анимированной модели
-  loadAnimModel(scene, "./assets/models/walking.glb");
+  // Loading environment model (Backrooms)
+  loadModel(scene, "./assets/models/backrooms_vr18_compressed.glb", world, {
+    x: 0,
+    y: 0,
+    z: 0,
+  });
+  // loadModel(scene, "./assets/models/studio_fixed.glb", world, {
+  //   x: 10,
+  //   y: 10,
+  //   z: 10,
+  // });
+  // Loading animated model
+  //loadAnimModel(scene, "./assets/models/skin_stealer.glb");
+  //loadAnimModel(scene, "./assets/models/walking_compressed.glb");
 
-  // Освещение (Dir + Ambient + FlashLight (фонарик))
+  // Lighting (Dir + Ambient + FlashLight)
   createFlashlight(scene, camera);
   createFlashlightUI();
   enableFlashlightUI();
   enableLight(scene);
 
-  // Создаем физичсекие 3д тела (куб и сфера)
-  create3dBodies(scene, world);
+  // Creating physical 3D bodies (cube and sphere)
+  // create3dBodies(scene, world);
 
-  // Создаем физического игрока
+  // Create physical player
   const playerBody = createPlayer(world);
 
-  // ===============================
-  // Обработка событий Pointer Lock
-  // ===============================
-
+  // Handling Pointer Lock Events
   pointerLockControl(camera);
-  // Подключаем управление мышью от первого лица
-  // const controls = new PointerLockControls(camera, document.body);
 
-  // // Глобальный флаг для отслеживания состояния блокировки
-  // let isPointerLocked = false;
-
-  // // Обработчики событий Pointer Lock
-  // controls.domElement.addEventListener("pointerlockchange", () => {
-  //   if (!controls.isLocked) {
-  //     setSpectatorActive(false);
-  //     Object.keys(keys).forEach((k) => (keys[k] = false));
-  //   }
-  //   isPointerLocked = controls.isLocked;
-  //   console.log("Pointer lock changed:", isPointerLocked);
-  // });
-
-  // controls.domElement.addEventListener("pointerlockerror", () => {
-  //   console.log("Pointer lock failed, will retry on next click");
-  // });
-
-  // Инициализация меню
+  // Menu initialization
   menuInit(controls);
 
   // =============
-  // НАСТРОЙКИ UI
+  // UI SETTINGS
   // =============
 
-  // Инициализация UI TweakPane
+  // Initialization UI TweakPane
   initUI(controls);
 
-  // Параметры скорости игрока
+  // Player speed ​​parametrs
   const PARAMS = {
     speed: 6,
     boost: 2,
   };
 
-  // Параметры прыжка игрока
+  // Player jump parameters
   const jumpParams = {
     force: 5.5,
     groundCheck: 1.2,
     playerHeight: 0.8,
   };
 
-  // Добавление binding в UI TweakPane
+  // Adding a binding to UI TweakPane
   addUIParts(PARAMS, jumpParams);
 
-  // Таймер
+  // Timer
   const timer = new THREE.Timer();
   timer.connect(document);
 
-  // Обработка клавиатуры
+  // Keyboard parsing
   keyboardParser(controls);
 
-  // Векторы для расчета направления движения
+  // Vectors for calculating the direction of movement
   const moveDirection = new THREE.Vector3();
   const frontVector = new THREE.Vector3();
   const sideVector = new THREE.Vector3();
 
+  // Can jump flag
   let canJump = true;
 
-  // Игровой цикл
+  // =============
+  // SOUND
+  // =============
+
+  // Инициализация звука
+  initAudio(scene, camera);
+
+  // Game loop
   function animate() {
     requestAnimationFrame(animate);
+
     timer.update();
     const delta = timer.getDelta();
 
@@ -152,15 +150,15 @@ function runGame(RAPIER) {
       return;
     }
 
-    // Обновляем направление фонарика
+    // Update the flashlight direction
     if (isGameActive && !isPaused) {
       updateFlashlightPosition(camera);
     }
 
-    // Шаг физического мира
+    // Step of physical world
     world.step();
 
-    // Синхронизируем физические тела с графикой
+    // Synchronize physical bodies with graphics
     physicsPairs.forEach((pair) => {
       const position = pair.body.translation();
       const rotation = pair.body.rotation();
@@ -168,7 +166,7 @@ function runGame(RAPIER) {
       pair.mesh.quaternion.set(rotation.x, rotation.y, rotation.z, rotation.w);
     });
 
-    // Обновление анимированной модели
+    // Update animated model
     responseAnimModel(delta);
 
     if (!keys.f2) {
@@ -196,7 +194,7 @@ function runGame(RAPIER) {
     stats.end();
   }
 
-  // Изменение размеров окна
+  // Resizing window
   window.addEventListener("resize", () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();

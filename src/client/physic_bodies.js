@@ -7,32 +7,31 @@ export { physicsPairs };
 
 export function create3dBodies(scene, world) {
   // 1. Создаем физический пол
-  // const floorSize = 100;
-  // const floorThickness = 0.4;
+  const floorSize = 200;
+  const floorThickness = 0.4;
 
-  // const floorBodyDesc = RAPIER.RigidBodyDesc.fixed().setTranslation(
-  //   0,
-  //   -floorThickness / 2,
-  //   0,
-  // );
-  // const floorBody = world.createRigidBody(floorBodyDesc);
-  // const floorColliderDesc = RAPIER.ColliderDesc.cuboid(
-  //   floorSize / 2,
-  //   floorThickness / 2,
-  //   floorSize / 2,
-  // );
-  // world.createCollider(floorColliderDesc, floorBody);
+  const floorBodyDesc = RAPIER.RigidBodyDesc.fixed().setTranslation(
+    0,
+    -floorThickness / 2,
+    0,
+  );
+  const floorBody = world.createRigidBody(floorBodyDesc);
+  const floorColliderDesc = RAPIER.ColliderDesc.cuboid(
+    floorSize / 2,
+    floorThickness / 2,
+    floorSize / 2,
+  );
+  world.createCollider(floorColliderDesc, floorBody);
 
-  // const floorGeo = new THREE.BoxGeometry(floorSize, floorThickness, floorSize);
-  // const floorMat = new THREE.MeshStandardMaterial({
-  //   color: 0x151515,
-  //   roughness: 0.9,
-  // });
-  // const floorMesh = new THREE.Mesh(floorGeo, floorMat);
-  // floorMesh.position.y = -floorThickness / 2;
-  // floorMesh.receiveShadow = true;
-  // scene.add(floorMesh);
-
+  const floorGeo = new THREE.BoxGeometry(floorSize, floorThickness, floorSize);
+  const floorMat = new THREE.MeshStandardMaterial({
+    color: 0x151515,
+    roughness: 0.9,
+  });
+  const floorMesh = new THREE.Mesh(floorGeo, floorMat);
+  floorMesh.position.y = -floorThickness / 2;
+  floorMesh.receiveShadow = true;
+  scene.add(floorMesh);
   // 2. Создаем физический куб
   const cubeGeo = new THREE.BoxGeometry(2, 2, 2);
   const cubeMat = new THREE.MeshStandardMaterial({

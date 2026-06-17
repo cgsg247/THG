@@ -28,30 +28,30 @@ export function spectatorMode(controls) {
   }
 }
 
+const forward = new THREE.Vector3();
+const right = new THREE.Vector3();
+const moveVector = new THREE.Vector3();
+
 export function updateSpectatorCamera(camera, controls, delta, keys, PARAMS) {
   if (!isSpectatorActive || !controls.isLocked) return;
 
-  const moveDirection = new THREE.Vector3();
-  moveDirection.z = Number(keys.w) - Number(keys.s);
-  moveDirection.x = Number(keys.a) - Number(keys.d);
+  const zMove = Number(keys.w) - Number(keys.s);
+  const xMove = Number(keys.d) - Number(keys.a);
 
-  if (moveDirection.length() > 0) {
-    moveDirection.normalize();
-  }
+  if (zMove === 0 && xMove === 0) return;
 
-  const forward = new THREE.Vector3();
   camera.getWorldDirection(forward);
-  forward.y = 0;
   forward.normalize();
 
-  const right = new THREE.Vector3();
-  right.crossVectors(camera.up, forward).normalize();
+  right.setFromMatrixColumn(camera.matrix, 0);
 
-  const moveVector = new THREE.Vector3();
-  moveVector.addScaledVector(forward, moveDirection.z);
-  moveVector.addScaledVector(right, moveDirection.x);
+  moveVector.set(0, 0, 0);
 
-  let speed = PARAMS.speed;
+  if (zMove !== 0) moveVector.addScaledVector(forward, zMove);
+  if (xMove !== 0) moveVector.addScaledVector(right, xMove);
 
+  moveVector.normalize();
+
+  const speed = PARAMS.speed;
   camera.position.addScaledVector(moveVector, speed * delta);
 }
