@@ -71,7 +71,7 @@ export function setIsPaused(value) {
   isPaused = value;
 }
 
-export function menuInit(controls) {
+export function menuInit(playerBody, controls) {
   gameMenu.onResume(() => {
     gameMenu.hidePause();
     isPaused = false;
@@ -91,7 +91,7 @@ export function menuInit(controls) {
         gameMenu.showPause();
         isPaused = true;
         isGameActive = false;
-        if (controls.isLocked) controls.unlock();
+        controls.unlock();
       }
     },
     () => {

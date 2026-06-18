@@ -1,14 +1,7 @@
 import * as THREE from "three";
 import RAPIER from "@dimforge/rapier3d-compat";
-import { loadModel, loadAnimModel, responseAnimModel } from "./model_load.js";
-import {
-  isGameActive,
-  isPaused,
-  menuInit,
-  gameMenu,
-  setIsGameActive,
-  setIsPaused,
-} from "./menu.js";
+import { responseAnimModel, enemyAnimModel } from "./model_load.js";
+import { isGameActive, isPaused, menuInit, gameMenu } from "./menu.js";
 import { MovePlayer } from "./player_move.js";
 import Stats from "stats.js";
 import {
@@ -20,12 +13,11 @@ import {
 import { enableLight } from "./light.js";
 import { createPlayer, create3dBodies, physicsPairs } from "./physic_bodies.js";
 import { initCamera, updateSpectatorCamera } from "./camera.js";
-import { initUI, addUIParts } from "./ui.js";
+import { initUI, addUIParts, PARAMS, jumpParams, ENEMY_PARAMS } from "./ui.js";
 import { keyboardParser, keys } from "./keyboard.js";
 import { controls, pointerLockControl } from "./pointer_lock.js";
-import { initAudio } from "./audio.js";
-import { LoadingManager } from "./loading.js";
-import { showStory, startVideo } from "./story.js";
+import { startGameLoading } from "./loading.js";
+import { Enemy, initGrid } from "./enemy.js";
 
 RAPIER.init({}).then(() => {
   runGame(RAPIER);
@@ -61,7 +53,8 @@ function runGame(RAPIER) {
   // Renderer and shadows
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.shadowMap.enabled = true;
+  //renderer.shadowMap.enabled = true;
+  renderer.shadowMap.enabled = false;
   renderer.shadowMap.type = THREE.PCFShadowMap;
   document.body.appendChild(renderer.domElement);
 
@@ -80,51 +73,44 @@ function runGame(RAPIER) {
   // Handling Pointer Lock Events
   pointerLockControl(camera);
 
-  const loadingManager = new LoadingManager();
+  let enemy = null;
 
-  async function startGameLoading() {
-    loadingManager.addTask(
-      (onProgress) =>
-        loadModel(
-          scene,
-          "./assets/models/backrooms_vr18_compressed.glb",
-          world,
-          { x: 0, y: 0, z: 0 },
-          onProgress,
-        ),
-      "Enviroment",
-    );
-    loadingManager.addTask(
-      (onProgress) =>
-        loadAnimModel(scene, "./assets/models/walking.glb", onProgress),
-      "Animation",
-    );
-    loadingManager.addTask(
-      (onProgress) => initAudio(scene, camera, onProgress),
-      "Sound",
-    );
-
-    await loadingManager.start();
-
-    setIsGameActive(true);
-    setIsPaused(false);
-    if (!controls.isLocked) {
-      controls.lock();
-    }
-  }
-
-  gameMenu.onStart(() => {
+  gameMenu.onStart(async () => {
+    gameMenu.hideMain();
     document.getElementById("main-menu").style.display = "none";
 
-    showStory(() => {
-      startVideo(() => {
-        startGameLoading();
-      });
-    });
+    try {
+      controls.lock();
+    } catch (error) {
+      console.error("PointerLock Error:", error);
+    }
+
+    try {
+      await startGameLoading(scene, world, camera);
+      console.log("Все ресурсы успешно загружены. Инициализируем ИИ врага...");
+      const gridData = initGrid(scene, world, 0.5, 0.5);
+      if (enemyAnimModel) {
+        const startPos = new THREE.Vector3(5, camera.position.y - 0.5, 5);
+
+        enemy = new Enemy(
+          enemyAnimModel,
+          gridData,
+          startPos,
+          ENEMY_PARAMS.speed,
+        );
+        console.log("Враг заспавнен на высоте:", startPos.y);
+      } else {
+        console.error(
+          "Критическая ошибка: enemyAnimModel равен null после загрузки.",
+        );
+      }
+    } catch (error) {
+      console.error("Ошибка при старте игры или генерации сетки:", error);
+    }
   });
 
   // Menu initialization
-  menuInit(controls);
+  menuInit(playerBody, controls);
 
   // =============
   // UI SETTINGS
@@ -133,21 +119,8 @@ function runGame(RAPIER) {
   // Initialization UI TweakPane
   initUI(controls);
 
-  // Player speed ​​parametrs
-  const PARAMS = {
-    speed: 6,
-    boost: 2,
-  };
-
-  // Player jump parameters
-  const jumpParams = {
-    force: 5.5,
-    groundCheck: 1.2,
-    playerHeight: 0.8,
-  };
-
   // Adding a binding to UI TweakPane
-  addUIParts(PARAMS, jumpParams);
+  addUIParts();
 
   // Timer
   const timer = new THREE.Timer();
@@ -217,6 +190,11 @@ function runGame(RAPIER) {
       if (controls.isLocked) {
         updateSpectatorCamera(camera, controls, delta, keys, PARAMS);
       }
+    }
+
+    if (enemy) {
+      enemy.update(delta, camera.position);
+      enemy.setSpeed(ENEMY_PARAMS.speed);
     }
 
     renderer.render(scene, camera);

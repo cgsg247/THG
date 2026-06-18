@@ -21,7 +21,23 @@ export function initUI(controls) {
   });
 }
 
-export function addUIParts(PARAMS, jumpParams) {
+// Player speed ​​parametrs
+export const PARAMS = {
+  speed: 6,
+  boost: 2,
+};
+
+// Player jump parameters
+export const jumpParams = {
+  force: 5.5,
+  groundCheck: 1.2,
+  playerHeight: 0.8,
+};
+
+// Enemy speed parametrs
+export const ENEMY_PARAMS = { speed: 2.0 };
+
+export function addUIParts() {
   pane.addBinding(PARAMS, "speed", {
     min: 0.1,
     max: 20,
@@ -38,4 +54,5 @@ export function addUIParts(PARAMS, jumpParams) {
     max: 1.0,
     step: 0.05,
   });
+  pane.addBinding(ENEMY_PARAMS, "speed", { min: 0.5, max: 5, step: 0.1 });
 }

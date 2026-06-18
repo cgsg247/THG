@@ -78,13 +78,11 @@ export function keyboardParser(controls) {
   });
   window.addEventListener("click", () => {
     if (isGameActive && !isPaused && !controls.isLocked) {
-      setTimeout(() => {
-        try {
-          controls.lock();
-        } catch (error) {
-          console.warn("Failed to lock:", error);
-        }
-      }, 50);
+      try {
+        controls.lock();
+      } catch (error) {
+        console.warn("Failed to lock:", error);
+      }
     }
   });
 }

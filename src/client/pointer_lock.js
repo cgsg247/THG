@@ -1,5 +1,6 @@
 import { PointerLockControls } from "three/examples/jsm/controls/PointerLockControls.js";
 import { setSpectatorActive } from "./camera.js";
+import { keys } from "./keyboard.js";
 
 export let controls = false;
 
