@@ -8,7 +8,8 @@
   "main": "index.js",
   "scripts": {
     "dev": "rollup -c -w",
-    "build": "NODE_OPTIONS=--max-old-space-size=4096 rollup -c"
+    "build": "rollup -c",
+    "start": "http-server dist -p 8080"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^29.0.3",

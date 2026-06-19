@@ -1,4 +1,5 @@
 import { Pane } from "tweakpane";
+import { setWireframe } from "./model_load";
 
 let pane = false;
 
@@ -37,6 +38,11 @@ export const jumpParams = {
 // Enemy speed parametrs
 export const ENEMY_PARAMS = { speed: 2.0 };
 
+// Wireframe
+export const isWireframe = {
+  isActive: false,
+};
+
 export function addUIParts() {
   pane.addBinding(PARAMS, "speed", {
     min: 0.1,
@@ -55,4 +61,12 @@ export function addUIParts() {
     step: 0.05,
   });
   pane.addBinding(ENEMY_PARAMS, "speed", { min: 0.5, max: 5, step: 0.1 });
+
+  const wireframeCheck = pane.addBinding(isWireframe, "isActive", {
+    label: "WireFrame",
+  });
+
+  wireframeCheck.on("change", (ev) => {
+    setWireframe(ev.value);
+  });
 }

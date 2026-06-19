@@ -1,162 +1,3 @@
-// import * as THREE from "three";
-// import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-// import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
-// import RAPIER from "@dimforge/rapier3d-compat";
-
-// export let mixer;
-
-// THREE.Cache.enabled = true;
-
-// const dracoLoader = new DRACOLoader();
-// dracoLoader.setDecoderPath(
-//   "https://www.gstatic.com/draco/versioned/decoders/1.5.6/",
-// );
-// dracoLoader.setDecoderConfig({ type: "wasm" });
-
-// async function getCachedUrl(url) {
-//   const cacheName = "threejs-assets-cache";
-
-//   try {
-//     const cache = await caches.open(cacheName);
-//     const cachedResponse = await cache.match(url);
-
-//     if (cachedResponse) {
-//       const blob = await cachedResponse.blob();
-//       return URL.createObjectURL(blob);
-//     }
-
-//     const response = await fetch(url);
-
-//     await cache.put(url, response.clone());
-
-//     const blob = await response.blob();
-//     return URL.createObjectURL(blob);
-//   } catch (error) {
-//     console.warn("Кэширование недоступно, загружаем напрямую:", error);
-//     return url;
-//   }
-// }
-
-// export async function loadModel(scene, path, world, translate, onProgress) {
-//   const localPath = await getCachedUrl(path);
-
-//   return new Promise((resolve, reject) => {
-//     const loader = new GLTFLoader();
-//     loader.setDRACOLoader(dracoLoader);
-
-//     loader.load(
-//       localPath,
-//       (gltf) => {
-//         const model = gltf.scene;
-//         scene.add(model);
-
-//         model.traverse((child) => {
-//           if (child.isMesh) {
-//             child.geometry.computeVertexNormals();
-//             child.castShadow = true;
-//             child.receiveShadow = true;
-
-//             const geometry = child.geometry;
-//             if (!geometry.attributes.position) return;
-
-//             let vertices = geometry.attributes.position.array;
-//             let indices = geometry.index ? geometry.index.array : null;
-
-//             const pos = child.getWorldPosition(new THREE.Vector3());
-//             const rot = child.getWorldQuaternion(new THREE.Quaternion());
-//             const scale = child.getWorldScale(new THREE.Vector3());
-
-//             const scaledVertices = new Float32Array(vertices.length);
-//             for (let i = 0; i < vertices.length; i += 3) {
-//               scaledVertices[i] = vertices[i] * scale.x;
-//               scaledVertices[i + 1] = vertices[i + 1] * scale.y;
-//               scaledVertices[i + 2] = vertices[i + 2] * scale.z;
-//             }
-
-//             const meshBodyDesc = RAPIER.RigidBodyDesc.fixed()
-//               .setTranslation(
-//                 pos.x + translate.x,
-//                 pos.y + translate.y,
-//                 pos.z + translate.z,
-//               )
-//               .setRotation(rot);
-//             const meshBody = world.createRigidBody(meshBodyDesc);
-//             const colliderDesc = RAPIER.ColliderDesc.trimesh(
-//               scaledVertices,
-//               indices,
-//             );
-//             world.createCollider(colliderDesc, meshBody);
-//           }
-//         });
-//         console.log(`model: ${path} loaded`);
-//         resolve();
-//       },
-//       (progress) => {
-//         const percent =
-//           progress.total && progress.total > 0
-//             ? (progress.loaded / progress.total) * 100
-//             : 100;
-
-//         if (onProgress) onProgress(percent, `model: ${path}`);
-//       },
-//       (error) => {
-//         reject(error);
-//         console.error("Error loading model:", error);
-//       },
-//     );
-//   });
-// }
-
-// export let enemyAnimModel = null;
-
-// export async function loadAnimModel(scene, path, onProgress, isEnemy) {
-//   const localPath = await getCachedUrl(path);
-
-//   return new Promise((resolve, reject) => {
-//     const loader = new GLTFLoader();
-//     loader.setDRACOLoader(dracoLoader);
-//     loader.load(
-//       localPath,
-//       (gltf) => {
-//         const model = gltf.scene;
-//         scene.add(model);
-
-//         // mixer = new THREE.AnimationMixer(gltf.scene);
-
-//         // if (gltf.animations.length > 0) {
-//         //   const action = mixer.clipAction(gltf.animations[0]);
-//         //   action.play();
-//         // }
-
-//         if (isEnemy) {
-//           enemyAnimModel = model;
-//           console.log(`enemy model: ${path} loaded`);
-//         } else {
-//           console.log(`model: ${path} loaded`);
-//         }
-
-//         resolve(model);
-//       },
-//       (progress) => {
-//         // Защита от деления на 0 при чтении из кэша
-//         const percent =
-//           progress.total && progress.total > 0
-//             ? (progress.loaded / progress.total) * 100
-//             : 100;
-
-//         if (onProgress) onProgress(percent, `Model: ${path}`);
-//       },
-//       (error) => {
-//         reject(error);
-//         console.error("Error loading model:", error);
-//       },
-//     );
-//   });
-// }
-
-// export function responseAnimModel(delta) {
-//   if (mixer) mixer.update(delta);
-// }
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
@@ -165,6 +6,20 @@ import RAPIER from "@dimforge/rapier3d-compat";
 export let mixer;
 
 THREE.Cache.enabled = true;
+
+export const loadedModels = [];
+
+function applyWireframe(model, flag) {
+  model.traverse((child) => {
+    if (child.isMesh) child.material.wireframe = flag;
+  });
+}
+
+export function setWireframe(flag) {
+  loadedModels.forEach((model) => {
+    applyWireframe(model, flag);
+  });
+}
 
 async function getCachedUrl(url) {
   const cacheName = "threejs-assets-cache";
@@ -211,11 +66,13 @@ export async function loadModel(scene, path, world, translate, onProgress) {
         const allIndices = [];
         let vertexOffset = 0;
 
+        loadedModels.push(model);
+
         model.traverse((child) => {
           if (child.isMesh) {
-            child.geometry.computeVertexNormals();
-            child.castShadow = true;
-            child.receiveShadow = true;
+            // child.geometry.computeVertexNormals();
+            // child.castShadow = true;
+            // child.receiveShadow = true;
 
             const geometry = child.geometry;
             if (!geometry.attributes.position) return;
@@ -276,6 +133,9 @@ export async function loadModel(scene, path, world, translate, onProgress) {
 
         console.log(`model: ${path} loaded`);
         dracoLoader.dispose();
+        if (localPath.startsWith("blob:")) {
+          URL.revokeObjectURL(localPath);
+        }
         resolve();
       },
       (progress) => {
@@ -288,11 +148,11 @@ export async function loadModel(scene, path, world, translate, onProgress) {
       },
       (error) => {
         dracoLoader.dispose();
+        if (localPath.startsWith("blob:")) {
+          URL.revokeObjectURL(localPath);
+        }
         console.error("КРИТИЧЕСКАЯ ОШИБКА ЗАГРУЗКИ КАРТЫ:", error);
-
-        throw new Error(
-          "Загрузка остановлена из-за ошибки Draco. Проверьте вкладку Network.",
-        );
+        reject(error);
       },
     );
   });
@@ -300,7 +160,14 @@ export async function loadModel(scene, path, world, translate, onProgress) {
 
 export let enemyAnimModel = null;
 
-export async function loadAnimModel(scene, path, onProgress, isEnemy) {
+export async function loadAnimModel(
+  scene,
+  path,
+  world,
+  translate,
+  onProgress,
+  isEnemy,
+) {
   const localPath = await getCachedUrl(path);
 
   return new Promise((resolve, reject) => {
@@ -316,28 +183,46 @@ export async function loadAnimModel(scene, path, onProgress, isEnemy) {
       (gltf) => {
         const model = gltf.scene;
 
-        model.animations = gltf.animations;
+        loadedModels.push(model);
 
+        model.animations = gltf.animations;
         scene.add(model);
 
-        if (!isEnemy) {
-          mixer = new THREE.AnimationMixer(model);
-          if (gltf.animations.length > 0) {
-            const action = mixer.clipAction(gltf.animations[0]);
-            action.play();
-          }
-        }
+        // model.traverse((child) => {
+        //   if (child.isMesh) {
+        //     child.castShadow = true;
+        //     child.receiveShadow = true;
+        //   }
+        // });
+
+        const bodyDesc = RAPIER.RigidBodyDesc.dynamic()
+          .setTranslation(translate.x, translate.y, translate.z)
+          .lockRotations();
+
+        const rigidBody = world.createRigidBody(bodyDesc);
+
+        const colliderDesc = RAPIER.ColliderDesc.capsule(1.0, 0.4);
+        world.createCollider(colliderDesc, rigidBody);
+
+        model.userData.physicsBody = rigidBody;
 
         if (isEnemy) {
           enemyAnimModel = model;
-          console.log(
-            `enemy model: ${path} loaded с ${gltf.animations.length} анимациями`,
-          );
+          console.log(`Enemy model with physics loaded: ${path}`);
         } else {
-          console.log(`model: ${path} loaded`);
+          characterBody = rigidBody;
+          console.log(`Player model with physics loaded: ${path}`);
         }
 
+        mixer = new THREE.AnimationMixer(model);
+        if (gltf.animations.length > 0) {
+          const action = mixer.clipAction(gltf.animations[0]);
+          action.play();
+        }
         dracoLoader.dispose();
+        if (localPath.startsWith("blob:")) {
+          URL.revokeObjectURL(localPath);
+        }
         resolve(model);
       },
       (progress) => {
@@ -349,6 +234,9 @@ export async function loadAnimModel(scene, path, onProgress, isEnemy) {
       },
       (error) => {
         dracoLoader.dispose();
+        if (localPath.startsWith("blob:")) {
+          URL.revokeObjectURL(localPath);
+        }
         reject(error);
         console.error("Error loading model:", error);
       },

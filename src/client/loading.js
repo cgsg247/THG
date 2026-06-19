@@ -102,7 +102,14 @@ export async function startGameLoading(scene, world, camera) {
   // );
   loadingManager.addTask(
     (onProgress) =>
-      loadAnimModel(scene, "./assets/models/bacteria.glb", onProgress, true),
+      loadAnimModel(
+        scene,
+        "./assets/models/bacteria.glb",
+        world,
+        { x: 0, y: 10, z: 0 },
+        onProgress,
+        true,
+      ),
     "Animation",
   );
 

@@ -87,23 +87,23 @@ function runGame(RAPIER) {
 
     try {
       await startGameLoading(scene, world, camera);
-      console.log("Все ресурсы успешно загружены. Инициализируем ИИ врага...");
-      const gridData = initGrid(scene, world, 0.5, 0.5);
-      if (enemyAnimModel) {
-        const startPos = new THREE.Vector3(5, camera.position.y - 0.5, 5);
+      // console.log("Все ресурсы успешно загружены. Инициализируем ИИ врага...");
+      // const gridData = initGrid(scene, world, 0.5, 0.5);
+      // if (enemyAnimModel) {
+      //   const startPos = new THREE.Vector3(5, camera.position.y - 0.5, 5);
 
-        enemy = new Enemy(
-          enemyAnimModel,
-          gridData,
-          startPos,
-          ENEMY_PARAMS.speed,
-        );
-        console.log("Враг заспавнен на высоте:", startPos.y);
-      } else {
-        console.error(
-          "Критическая ошибка: enemyAnimModel равен null после загрузки.",
-        );
-      }
+      //   enemy = new Enemy(
+      //     enemyAnimModel,
+      //     gridData,
+      //     startPos,
+      //     ENEMY_PARAMS.speed,
+      //   );
+      //   console.log("Враг заспавнен на высоте:", startPos.y);
+      // } else {
+      //   console.error(
+      //     "Критическая ошибка: enemyAnimModel равен null после загрузки.",
+      //   );
+      // }
     } catch (error) {
       console.error("Ошибка при старте игры или генерации сетки:", error);
     }
@@ -192,10 +192,10 @@ function runGame(RAPIER) {
       }
     }
 
-    if (enemy) {
-      enemy.update(delta, camera.position);
-      enemy.setSpeed(ENEMY_PARAMS.speed);
-    }
+    // if (enemy) {
+    //   enemy.update(delta, camera.position);
+    //   enemy.setSpeed(ENEMY_PARAMS.speed);
+    // }
 
     renderer.render(scene, camera);
 
