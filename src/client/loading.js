@@ -106,7 +106,7 @@ export async function startGameLoading(scene, world, camera) {
         scene,
         "./assets/models/bacteria.glb",
         world,
-        { x: 0, y: 10, z: 0 },
+        { x: 0, y: 1.5, z: 5 },
         onProgress,
         true,
       ),

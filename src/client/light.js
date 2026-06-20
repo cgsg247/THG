@@ -2,7 +2,7 @@ import * as THREE from "three";
 
 // Освещение (Направленный свет + слабый эмбиент)
 export function enableLight(scene) {
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.1);
+  const ambientLight = new THREE.AmbientLight(0x000000, 0.1);
   scene.add(ambientLight);
   const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
   dirLight.position.set(10, 20, 10);

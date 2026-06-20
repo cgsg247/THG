@@ -1,6 +1,10 @@
 import * as THREE from "three";
 import RAPIER from "@dimforge/rapier3d-compat";
-import { responseAnimModel, enemyAnimModel } from "./model_load.js";
+import {
+  responseAnimModel,
+  enemyAnimModel,
+  updateEnemyPhysics,
+} from "./model_load.js";
 import { isGameActive, isPaused, menuInit, gameMenu } from "./menu.js";
 import { MovePlayer } from "./player_move.js";
 import Stats from "stats.js";
@@ -171,6 +175,9 @@ function runGame(RAPIER) {
 
     // Update animated model
     responseAnimModel(delta);
+
+    // Updateenemy physics
+    updateEnemyPhysics();
 
     if (!keys.f2) {
       MovePlayer(

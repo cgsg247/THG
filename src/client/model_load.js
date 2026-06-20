@@ -126,9 +126,9 @@ export async function loadModel(scene, path, world, translate, onProgress) {
           );
           world.createCollider(colliderDesc, meshBody);
 
-          console.log(
-            `[Physics Optimized] Оптимизированный коллайдер карты создан: ${finalVertices.length / 3} вершин.`,
-          );
+          //  console.log(
+          //   `[Physics Optimized] Оптимизированный коллайдер карты создан: ${finalVertices.length / 3} вершин.`,
+          // );
         }
 
         console.log(`model: ${path} loaded`);
@@ -159,6 +159,7 @@ export async function loadModel(scene, path, world, translate, onProgress) {
 }
 
 export let enemyAnimModel = null;
+export let unEnemyAnimModel = null;
 
 export async function loadAnimModel(
   scene,
@@ -183,6 +184,7 @@ export async function loadAnimModel(
       (gltf) => {
         const model = gltf.scene;
 
+        model.scale.set(0.67, 0.67, 0.67);
         loadedModels.push(model);
 
         model.animations = gltf.animations;
@@ -201,7 +203,26 @@ export async function loadAnimModel(
 
         const rigidBody = world.createRigidBody(bodyDesc);
 
-        const colliderDesc = RAPIER.ColliderDesc.capsule(1.0, 0.4);
+        // Debug capsule
+        const halfHeight = 0.7;
+        const radius = 0.4;
+        const debugCapsule = new THREE.CapsuleGeometry(
+          radius,
+          halfHeight * 2,
+          8,
+          16,
+        );
+        const debugMaterial = new THREE.MeshBasicMaterial({
+          color: 0x00ff00,
+          transparent: true,
+          opacity: 0.4,
+          wireframe: false,
+        });
+        const debugCapsuleMesh = new THREE.Mesh(debugCapsule, debugMaterial);
+        scene.add(debugCapsuleMesh);
+        model.userData.debugMesh = debugCapsuleMesh;
+
+        const colliderDesc = RAPIER.ColliderDesc.capsule(halfHeight, radius);
         world.createCollider(colliderDesc, rigidBody);
 
         model.userData.physicsBody = rigidBody;
@@ -210,8 +231,8 @@ export async function loadAnimModel(
           enemyAnimModel = model;
           console.log(`Enemy model with physics loaded: ${path}`);
         } else {
-          characterBody = rigidBody;
-          console.log(`Player model with physics loaded: ${path}`);
+          unEnemyAnimModel = rigidBody;
+          console.log(`Not enemy model with physics loaded: ${path}`);
         }
 
         mixer = new THREE.AnimationMixer(model);
@@ -246,4 +267,59 @@ export async function loadAnimModel(
 
 export function responseAnimModel(delta) {
   if (mixer) mixer.update(delta);
+}
+
+export function updateEnemyPhysics() {
+  if (enemyAnimModel && enemyAnimModel.userData.physicsBody) {
+    const body = enemyAnimModel.userData.physicsBody;
+    const position = body.translation();
+    const rotation = body.rotation();
+
+    enemyAnimModel.position.set(position.x, position.y, position.z);
+    enemyAnimModel.quaternion.set(
+      rotation.x,
+      rotation.y,
+      rotation.z,
+      rotation.w,
+    );
+
+    if (enemyAnimModel.userData.debugMesh) {
+      enemyAnimModel.userData.debugMesh.position.set(
+        position.x,
+        position.y,
+        position.z,
+      );
+      enemyAnimModel.userData.debugMesh.quaternion.set(
+        rotation.x,
+        rotation.y,
+        rotation.z,
+        rotation.w,
+      );
+    }
+  }
+
+  loadedModels.forEach((model) => {
+    if (model.userData.physicsBody) {
+      const body = model.userData.physicsBody;
+      const position = body.translation();
+      const rotation = body.rotation();
+
+      model.position.set(position.x, position.y, position.z);
+      model.quaternion.set(rotation.x, rotation.y, rotation.z, rotation.w);
+
+      if (model.userData.debugMesh) {
+        model.userData.debugMesh.position.set(
+          position.x,
+          position.y,
+          position.z,
+        );
+        model.userData.debugMesh.quaternion.set(
+          rotation.x,
+          rotation.y,
+          rotation.z,
+          rotation.w,
+        );
+      }
+    }
+  });
 }
