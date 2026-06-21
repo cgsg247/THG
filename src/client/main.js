@@ -4,6 +4,7 @@ import {
   responseAnimModel,
   enemyAnimModel,
   updateEnemyPhysics,
+  unEnemyAnimModel,
 } from "./model_load.js";
 import { isGameActive, isPaused, menuInit, gameMenu } from "./menu.js";
 import { MovePlayer } from "./player_move.js";
@@ -21,7 +22,17 @@ import { initUI, addUIParts, PARAMS, jumpParams, ENEMY_PARAMS } from "./ui.js";
 import { keyboardParser, keys } from "./keyboard.js";
 import { controls, pointerLockControl } from "./pointer_lock.js";
 import { startGameLoading } from "./loading.js";
-import { Enemy, initGrid } from "./enemy.js";
+import { showStory, startVideo } from "./story.js";
+import { Enemy } from "./enemy.js";
+import * as YUKA from "yuka";
+import {
+  backgroundSound,
+  sound,
+  startAudio,
+  startBackgroundAudio,
+  stopAudio,
+  stopBackgroundAudio,
+} from "./audio.js";
 
 RAPIER.init({}).then(() => {
   runGame(RAPIER);
@@ -57,9 +68,11 @@ function runGame(RAPIER) {
   // Renderer and shadows
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
-  //renderer.shadowMap.enabled = true;
-  renderer.shadowMap.enabled = false;
+  renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping; // или THREE.ReinhardToneMapping
+  renderer.toneMappingExposure = 0.8;
+
   document.body.appendChild(renderer.domElement);
 
   // Lighting (Dir + Ambient + FlashLight)
@@ -80,41 +93,25 @@ function runGame(RAPIER) {
   let enemy = null;
 
   gameMenu.onStart(async () => {
+    stopBackgroundAudio();
     gameMenu.hideMain();
     document.getElementById("main-menu").style.display = "none";
 
-    try {
-      controls.lock();
-    } catch (error) {
-      console.error("PointerLock Error:", error);
-    }
-
-    try {
-      await startGameLoading(scene, world, camera);
-      // console.log("Все ресурсы успешно загружены. Инициализируем ИИ врага...");
-      // const gridData = initGrid(scene, world, 0.5, 0.5);
-      // if (enemyAnimModel) {
-      //   const startPos = new THREE.Vector3(5, camera.position.y - 0.5, 5);
-
-      //   enemy = new Enemy(
-      //     enemyAnimModel,
-      //     gridData,
-      //     startPos,
-      //     ENEMY_PARAMS.speed,
-      //   );
-      //   console.log("Враг заспавнен на высоте:", startPos.y);
-      // } else {
-      //   console.error(
-      //     "Критическая ошибка: enemyAnimModel равен null после загрузки.",
-      //   );
-      // }
-    } catch (error) {
-      console.error("Ошибка при старте игры или генерации сетки:", error);
-    }
+    showStory(() => {
+      startVideo(async () => {
+        try {
+          await startGameLoading(scene, world, camera);
+          startAudio();
+        } catch (error) {
+          console.error("Ошибка: ", error);
+        }
+      });
+    });
   });
 
   // Menu initialization
   menuInit(playerBody, controls);
+  startBackgroundAudio();
 
   // =============
   // UI SETTINGS
@@ -140,6 +137,9 @@ function runGame(RAPIER) {
 
   // Can jump flag
   let canJump = true;
+
+  const entityManager = new YUKA.EntityManager();
+  let yukaEnemy = null;
 
   // Game loop
   function animate() {
@@ -173,10 +173,21 @@ function runGame(RAPIER) {
       pair.mesh.quaternion.set(rotation.x, rotation.y, rotation.z, rotation.w);
     });
 
+    if (enemyAnimModel && !yukaEnemy) {
+      yukaEnemy = new Enemy(enemyAnimModel, world, 1.5);
+      entityManager.add(yukaEnemy);
+    }
+
+    if (yukaEnemy) {
+      yukaEnemy.updateTargetPosition(camera.position);
+      entityManager.update(delta);
+      yukaEnemy.syncPhysicsAndGraphics();
+    }
+
     // Update animated model
     responseAnimModel(delta);
 
-    // Updateenemy physics
+    // Update enemy physics
     updateEnemyPhysics();
 
     if (!keys.f2) {
@@ -198,11 +209,6 @@ function runGame(RAPIER) {
         updateSpectatorCamera(camera, controls, delta, keys, PARAMS);
       }
     }
-
-    // if (enemy) {
-    //   enemy.update(delta, camera.position);
-    //   enemy.setSpeed(ENEMY_PARAMS.speed);
-    // }
 
     renderer.render(scene, camera);
 

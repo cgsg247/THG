@@ -1,6 +1,6 @@
 import { loadModel, loadAnimModel } from "./model_load.js";
 import { setIsGameActive, setIsPaused } from "./menu.js";
-import { initAudio } from "./audio.js";
+import { initAudio, initBackgroundAudio } from "./audio.js";
 
 export class LoadingManager {
   constructor() {
@@ -96,17 +96,28 @@ export async function startGameLoading(scene, world, camera) {
       ),
     "Enviroment",
   );
-  // loadingManager.addTask(
-  //   (onProgress) => initAudio(scene, camera, onProgress),
-  //   "Sound",
-  // );
+  loadingManager.addTask(
+    (onProgress) =>
+      initAudio(scene, camera, "./assets/sounds/hazmat.mp3", onProgress),
+    "Sound",
+  );
+  loadingManager.addTask(
+    (onProgress) =>
+      initBackgroundAudio(
+        scene,
+        camera,
+        "./assets/sounds/backrooms.mp3",
+        onProgress,
+      ),
+    "Background Sound",
+  );
   loadingManager.addTask(
     (onProgress) =>
       loadAnimModel(
         scene,
         "./assets/models/bacteria.glb",
         world,
-        { x: 0, y: 1.5, z: 5 },
+        { x: -60, y: 1.67, z: 10 },
         onProgress,
         true,
       ),

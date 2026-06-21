@@ -1,4 +1,5 @@
-// Menu class
+import { stopAudio } from "./audio.js";
+
 class GameMenu {
   constructor() {
     this.main = document.getElementById("main-menu");
@@ -49,16 +50,13 @@ class GameMenu {
 
   reset(player, controls) {
     if (player) {
-      player.setTranslation({ x: 0, y: 10, z: 0 }, true);
-      player.setLinvel({ x: 0, y: 0, z: 0 }, true);
+      player.setTranslation({ x: 0, y: 0, z: 0 }, true);
+      player.setLinvel({ x: 0, y: 2, z: 0 }, true);
     }
     if (controls && controls.isLocked) controls.unlock();
   }
 }
 
-// ==========================================
-// ИНИЦИАЛИЗАЦИЯ МЕНЮ
-// ==========================================
 export const gameMenu = new GameMenu();
 export let isGameActive = false;
 export let isPaused = false;
@@ -79,6 +77,7 @@ export function menuInit(playerBody, controls) {
   });
 
   gameMenu.onExit(() => {
+    stopAudio();
     gameMenu.showMain();
     isGameActive = isPaused = false;
     if (controls.isLocked) controls.unlock();

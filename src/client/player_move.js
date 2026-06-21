@@ -1,3 +1,4 @@
+import { isGameActive } from "./menu";
 import RAPIER from "@dimforge/rapier3d-compat";
 
 function isGrounded(RAPIER, world, playerBody, jumpParams) {
@@ -23,9 +24,9 @@ export function MovePlayer(
   keys,
   canJump,
 ) {
-  // ЛОГИКА ДВИЖЕНИЯ ИГРОКА (Только если курсор мыши захвачен игрой)
+  if (!isGameActive) return;
+
   if (controls.isLocked) {
-    // ПРЫЖОК
     const grounded = isGrounded(RAPIER, world, playerBody, jumpParams);
     if (keys.space && grounded && canJump) {
       const vel = playerBody.linvel();
@@ -43,9 +44,13 @@ export function MovePlayer(
     moveDirection.normalize();
 
     let current_speed;
-    // Ускорение по shift
-    if (keys.shift) current_speed = PARAMS.speed * PARAMS.boost;
-    else current_speed = PARAMS.speed;
+    const speed_boost = 1.75;
+
+    if (keys.shift) {
+      current_speed = PARAMS.speed * speed_boost;
+    } else {
+      current_speed = PARAMS.speed;
+    }
 
     const targetVelocityX =
       (moveDirection.x * frontVector.z +

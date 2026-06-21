@@ -25,7 +25,6 @@ export function initUI(controls) {
 // Player speed ​​parametrs
 export const PARAMS = {
   speed: 6,
-  boost: 2,
 };
 
 // Player jump parameters
@@ -44,23 +43,23 @@ export const isWireframe = {
 };
 
 export function addUIParts() {
-  pane.addBinding(PARAMS, "speed", {
-    min: 0.1,
-    max: 20,
-    step: 0.05,
-  });
-  pane.addBinding(jumpParams, "force", { min: 3, max: 10, step: 0.1 });
-  pane.addBinding(jumpParams, "groundCheck", {
-    min: 0.5,
-    max: 1.2,
-    step: 0.05,
-  });
-  pane.addBinding(jumpParams, "playerHeight", {
-    min: 0.1,
-    max: 1.0,
-    step: 0.05,
-  });
-  pane.addBinding(ENEMY_PARAMS, "speed", { min: 0.5, max: 5, step: 0.1 });
+  // pane.addBinding(PARAMS, "speed", {
+  //   min: 0.1,
+  //   max: 20,
+  //   step: 0.05,
+  // });
+  // pane.addBinding(jumpParams, "force", { min: 3, max: 10, step: 0.1 });
+  // pane.addBinding(jumpParams, "groundCheck", {
+  //   min: 0.5,
+  //   max: 1.2,
+  //   step: 0.05,
+  // });
+  // pane.addBinding(jumpParams, "playerHeight", {
+  //   min: 0.1,
+  //   max: 1.0,
+  //   step: 0.05,
+  // });
+  // pane.addBinding(ENEMY_PARAMS, "enemy speed", { min: 0.5, max: 5, step: 0.1 });
 
   const wireframeCheck = pane.addBinding(isWireframe, "isActive", {
     label: "WireFrame",

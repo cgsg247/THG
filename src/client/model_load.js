@@ -70,10 +70,6 @@ export async function loadModel(scene, path, world, translate, onProgress) {
 
         model.traverse((child) => {
           if (child.isMesh) {
-            // child.geometry.computeVertexNormals();
-            // child.castShadow = true;
-            // child.receiveShadow = true;
-
             const geometry = child.geometry;
             if (!geometry.attributes.position) return;
 
@@ -125,10 +121,6 @@ export async function loadModel(scene, path, world, translate, onProgress) {
             finalIndices,
           );
           world.createCollider(colliderDesc, meshBody);
-
-          //  console.log(
-          //   `[Physics Optimized] Оптимизированный коллайдер карты создан: ${finalVertices.length / 3} вершин.`,
-          // );
         }
 
         console.log(`model: ${path} loaded`);
@@ -190,13 +182,6 @@ export async function loadAnimModel(
         model.animations = gltf.animations;
         scene.add(model);
 
-        // model.traverse((child) => {
-        //   if (child.isMesh) {
-        //     child.castShadow = true;
-        //     child.receiveShadow = true;
-        //   }
-        // });
-
         const bodyDesc = RAPIER.RigidBodyDesc.dynamic()
           .setTranslation(translate.x, translate.y, translate.z)
           .lockRotations();
@@ -204,7 +189,7 @@ export async function loadAnimModel(
         const rigidBody = world.createRigidBody(bodyDesc);
 
         // Debug capsule
-        const halfHeight = 0.7;
+        const halfHeight = 0.5;
         const radius = 0.4;
         const debugCapsule = new THREE.CapsuleGeometry(
           radius,

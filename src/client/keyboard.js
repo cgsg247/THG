@@ -20,12 +20,9 @@ export const keys = {
 };
 
 export function keyboardParser(controls) {
-  // Обработка клавиатуры
   window.addEventListener("keydown", (e) => {
     const key = e.key.toLowerCase();
     const code = e.code;
-
-    if (!isGameActive || isPaused) return;
 
     if (key === "w" || key === "ц" || code === "KeyW") keys.w = true;
     if (key === "a" || key === "ф" || code === "KeyA") keys.a = true;
@@ -45,22 +42,21 @@ export function keyboardParser(controls) {
     const key = e.key.toLowerCase();
     const code = e.code;
 
-    if (!isGameActive || isPaused) return;
-
     if (key === "w" || key === "ц" || code === "KeyW") keys.w = false;
     if (key === "a" || key === "ф" || code === "KeyA") keys.a = false;
     if (key === "s" || key === "ы" || code === "KeyS") keys.s = false;
     if (key === "d" || key === "в" || code === "KeyD") keys.d = false;
 
-    if (code === "Space" || key === " ") {
+    if (code === "Space") {
       keys.space = false;
       e.preventDefault();
     }
-    if (code === "Shift" || e.shiftKey) {
+    if (code === "ShiftLeft" || code === "ShiftRight") {
       keys.shift = false;
       e.preventDefault();
     }
     if (code === "KeyF2" || key === "f2") {
+      if (!isGameActive || isPaused) return;
       ActiveKeyF2 = !ActiveKeyF2;
       keys.f2 = ActiveKeyF2;
       e.preventDefault();
@@ -69,6 +65,7 @@ export function keyboardParser(controls) {
     }
   });
   window.addEventListener("blur", () => {
+    Object.keys(keys).forEach((k) => (keys[k] = false));
     if (isGameActive && !isPaused && controls.isLocked) {
       gameMenu.showPause();
       setIsPaused(true);
@@ -78,11 +75,7 @@ export function keyboardParser(controls) {
   });
   window.addEventListener("click", () => {
     if (isGameActive && !isPaused && !controls.isLocked) {
-      try {
-        controls.lock();
-      } catch (error) {
-        console.warn("Failed to lock:", error);
-      }
+      controls.lock();
     }
   });
 }
