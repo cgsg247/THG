@@ -102,6 +102,8 @@ export function menuInit(playerBody, controls, scene, camera) {
 
   gameMenu.onExit(() => {
     stopAudio();
+    const gameOverScreen = document.getElementById("game-over-screen");
+    if (gameOverScreen) gameOverScreen.style.display = "none";
     gameMenu.showMain(scene);
     isGameActive = isPaused = false;
     if (controls.isLocked) controls.unlock();

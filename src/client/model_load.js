@@ -5,8 +5,6 @@ import RAPIER from "@dimforge/rapier3d-compat";
 
 export let mixer;
 
-THREE.Cache.enabled = true;
-
 export const loadedModels = [];
 
 function applyWireframe(model, flag) {
@@ -21,31 +19,8 @@ export function setWireframe(flag) {
   });
 }
 
-async function getCachedUrl(url) {
-  const cacheName = "threejs-assets-cache";
-
-  try {
-    const cache = await caches.open(cacheName);
-    const cachedResponse = await cache.match(url);
-
-    if (cachedResponse) {
-      const blob = await cachedResponse.blob();
-      return URL.createObjectURL(blob);
-    }
-
-    const response = await fetch(url);
-    await cache.put(url, response.clone());
-
-    const blob = await response.blob();
-    return URL.createObjectURL(blob);
-  } catch (error) {
-    console.warn("Кэширование недоступно, загружаем напрямую:", error);
-    return url;
-  }
-}
-
 export async function loadModel(scene, path, world, translate, onProgress) {
-  const localPath = await getCachedUrl(path);
+  const localPath = path;
 
   return new Promise((resolve, reject) => {
     const dracoLoader = new DRACOLoader();
@@ -161,7 +136,7 @@ export async function loadAnimModel(
   onProgress,
   isEnemy,
 ) {
-  const localPath = await getCachedUrl(path);
+  const localPath = path;
 
   return new Promise((resolve, reject) => {
     const dracoLoader = new DRACOLoader();
@@ -191,21 +166,21 @@ export async function loadAnimModel(
         // Debug capsule
         const halfHeight = 0.5;
         const radius = 0.3;
-        // const debugCapsule = new THREE.CapsuleGeometry(
-        //   radius,
-        //   halfHeight * 2,
-        //   8,
-        //   16,
-        // );
-        // const debugMaterial = new THREE.MeshBasicMaterial({
-        //   color: 0x00ff00,
-        //   transparent: true,
-        //   opacity: 0.4,
-        //   wireframe: false,
-        // });
-        // const debugCapsuleMesh = new THREE.Mesh(debugCapsule, debugMaterial);
-        // scene.add(debugCapsuleMesh);
-        // model.userData.debugMesh = debugCapsuleMesh;
+        const debugCapsule = new THREE.CapsuleGeometry(
+          radius,
+          halfHeight * 2,
+          8,
+          16,
+        );
+        const debugMaterial = new THREE.MeshBasicMaterial({
+          color: 0x00ff00,
+          transparent: true,
+          opacity: 0.4,
+          wireframe: false,
+        });
+        const debugCapsuleMesh = new THREE.Mesh(debugCapsule, debugMaterial);
+        scene.add(debugCapsuleMesh);
+        model.userData.debugMesh = debugCapsuleMesh;
 
         const colliderDesc = RAPIER.ColliderDesc.capsule(halfHeight, radius);
         world.createCollider(colliderDesc, rigidBody);

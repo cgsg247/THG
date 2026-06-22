@@ -96,21 +96,21 @@ export async function startGameLoading(scene, world, camera) {
       ),
     "Enviroment",
   );
-  // loadingManager.addTask(
-  //   (onProgress) =>
-  //     initAudio(scene, camera, "./assets/sounds/hazmat.mp3", onProgress),
-  //   "Sound",
-  // );
-  // loadingManager.addTask(
-  //   (onProgress) =>
-  //     initBackgroundAudio(
-  //       scene,
-  //       camera,
-  //       "./assets/sounds/backrooms.mp3",
-  //       onProgress,
-  //     ),
-  //   "Background Sound",
-  // );
+  loadingManager.addTask(
+    (onProgress) =>
+      initAudio(scene, camera, "./assets/sounds/hazmat.mp3", onProgress),
+    "Sound",
+  );
+  loadingManager.addTask(
+    (onProgress) =>
+      initBackgroundAudio(
+        scene,
+        camera,
+        "./assets/sounds/backrooms.mp3",
+        onProgress,
+      ),
+    "Background Sound",
+  );
   loadingManager.addTask(
     (onProgress) =>
       loadAnimModel(

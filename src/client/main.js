@@ -23,7 +23,7 @@ import {
 import { enableLight } from "./light.js";
 import { createPlayer, physicsPairs } from "./physic_bodies.js";
 import { initCamera, updateSpectatorCamera } from "./camera.js";
-import { PARAMS, jumpParams } from "./ui.js";
+import { PARAMS, jumpParams, initUI, addUIParts } from "./ui.js";
 import { keyboardParser, keys } from "./keyboard.js";
 import { controls, pointerLockControl } from "./pointer_lock.js";
 import { startGameLoading } from "./loading.js";
@@ -37,13 +37,26 @@ import {
   stopAudio,
   stopBackgroundAudio,
 } from "./audio.js";
-import { checkLose, isGameOver, resetGameOver } from "./end.js";
+import { checkGameOver, isGameOver, resetGameOver } from "./end.js";
+import Stats from "stats.js";
 
 RAPIER.init({}).then(() => {
   runGame(RAPIER);
 });
 
 function runGame(RAPIER) {
+  const stats = new Stats();
+  Array.from(stats.dom.children).forEach((canvas) => {
+    canvas.style.display = "block";
+    canvas.style.float = "left";
+    canvas.style.marginRight = "5px";
+  });
+
+  stats.dom.style.top = "10px";
+  stats.dom.style.left = "10px";
+  stats.dom.style.width = "auto";
+
+  document.body.appendChild(stats.dom);
   // Creating a physical world with gravity
   const g = -9.80665; // free-fall acceleration
   const gravity = { x: 0.0, y: g, z: 0.0 };
@@ -83,6 +96,8 @@ function runGame(RAPIER) {
     stopBackgroundAudio();
     resetGameOver();
     gameMenu.hideMain();
+    const gameOverScreen = document.getElementById("game-over-screen");
+    if (gameOverScreen) gameOverScreen.style.display = "none";
     document.getElementById("main-menu").style.display = "none";
 
     showStory(() => {
@@ -95,12 +110,6 @@ function runGame(RAPIER) {
         }
       });
     });
-    // try {
-    //   await startGameLoading(scene, world, camera);
-    //   startAudio();
-    // } catch (error) {
-    //   console.error("Error: ", error);
-    // }
   });
 
   // Menu initialization
@@ -126,6 +135,9 @@ function runGame(RAPIER) {
   const frontVector = new THREE.Vector3();
   const sideVector = new THREE.Vector3();
 
+  initUI(controls);
+  addUIParts();
+
   // Can jump flag
   let canJump = true;
 
@@ -144,8 +156,16 @@ function runGame(RAPIER) {
       return;
     }
 
+    // if (isGameActive && !isPaused) {
+    // } else {
+    //   renderer.render(scene, camera);
+    //   return;
+    // }
     if (isGameActive && !isPaused) {
+      stats.dom.style.display = "block";
+      stats.begin();
     } else {
+      stats.dom.style.display = "none";
       renderer.render(scene, camera);
       return;
     }
@@ -167,7 +187,7 @@ function runGame(RAPIER) {
     });
 
     if (enemyAnimModel && !enemy) {
-      enemy = new Enemy(enemyAnimModel, world, 7);
+      enemy = new Enemy(enemyAnimModel, world, 3.5);
       entityManager.add(enemy);
     }
 
@@ -177,7 +197,7 @@ function runGame(RAPIER) {
       enemy.syncPhysicsAndGraphics(camera.position);
     }
 
-    if (checkLose(controls)) {
+    if (checkGameOver(controls)) {
       renderer.render(scene, camera);
       return;
     }
@@ -209,6 +229,7 @@ function runGame(RAPIER) {
     }
 
     renderer.render(scene, camera);
+    stats.end();
   }
 
   // Resizing window

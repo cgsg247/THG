@@ -5,6 +5,8 @@ import RAPIER from "@dimforge/rapier3d-compat";
 const physicsPairs = [];
 export { physicsPairs };
 
+export let playerCollider = null;
+
 export function create3dBodies(scene, world) {
   // Create physical floor
   const floorSize = 200;
@@ -79,6 +81,7 @@ export function createPlayer(world) {
     .lockRotations();
   const playerBody = world.createRigidBody(playerBodyDesc);
   const playerColliderDesc = RAPIER.ColliderDesc.capsule(0.5, 0.5);
-  world.createCollider(playerColliderDesc, playerBody);
+  const collider = world.createCollider(playerColliderDesc, playerBody);
+  playerCollider = collider;
   return playerBody;
 }

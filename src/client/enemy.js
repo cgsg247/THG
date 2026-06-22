@@ -24,10 +24,10 @@ export class Enemy extends YUKA.Vehicle {
     this.rayLength = 1.0;
 
     this.sound = new THREE.PositionalAudio(listener);
-    this.sound.setVolume(0.8);
-    this.sound.setRefDistance(5);
-    this.sound.setMaxDistance(30);
-    this.sound.setRolloffFactor(1.5);
+    this.sound.setVolume(0.5);
+    this.sound.setRefDistance(4);
+    this.sound.setMaxDistance(8);
+    this.sound.setRolloffFactor(0.5);
 
     this.model.add(this.sound);
 
