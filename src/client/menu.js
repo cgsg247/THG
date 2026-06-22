@@ -1,4 +1,10 @@
-import { stopAudio } from "./audio.js";
+import {
+  startBackgroundAudio,
+  stopAudio,
+  initBackgroundAudio,
+} from "./audio.js";
+
+import { resetGameOver } from "./end.js";
 
 class GameMenu {
   constructor() {
@@ -11,10 +17,28 @@ class GameMenu {
     this.active = this.paused = false;
   }
 
-  showMain() {
+  showMain(scene) {
     if (this.main) this.main.style.display = "flex";
     if (this.pause) this.pause.style.display = "none";
     this.active = this.paused = false;
+    stopAudio();
+    startBackgroundAudio();
+    resetGameOver();
+
+    if (scene) {
+      scene.traverse((object) => {
+        if (object.isMesh) {
+          object.geometry.dispose();
+
+          if (Array.isArray(object.material)) {
+            object.material.forEach((material) => material.dispose());
+          } else {
+            object.material.dispose();
+          }
+        }
+      });
+      scene.clear();
+    }
   }
   hideMain() {
     if (this.main) this.main.style.display = "none";
@@ -69,7 +93,7 @@ export function setIsPaused(value) {
   isPaused = value;
 }
 
-export function menuInit(playerBody, controls) {
+export function menuInit(playerBody, controls, scene, camera) {
   gameMenu.onResume(() => {
     gameMenu.hidePause();
     isPaused = false;
@@ -78,7 +102,7 @@ export function menuInit(playerBody, controls) {
 
   gameMenu.onExit(() => {
     stopAudio();
-    gameMenu.showMain();
+    gameMenu.showMain(scene);
     isGameActive = isPaused = false;
     if (controls.isLocked) controls.unlock();
     gameMenu.reset(playerBody, controls);
@@ -100,5 +124,6 @@ export function menuInit(playerBody, controls) {
     },
   );
 
-  gameMenu.showMain();
+  gameMenu.showMain(scene);
+  initBackgroundAudio(scene, camera, "./assets/sounds/backrooms.mp3");
 }

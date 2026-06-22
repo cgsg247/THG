@@ -1,12 +1,12 @@
 import * as THREE from "three";
 import RAPIER from "@dimforge/rapier3d-compat";
 
-// Массив для синхронизации физики с графикой
+// Physic bodies array for synchronize with graphics
 const physicsPairs = [];
 export { physicsPairs };
 
 export function create3dBodies(scene, world) {
-  // 1. Создаем физический пол
+  // Create physical floor
   const floorSize = 200;
   const floorThickness = 0.4;
 
@@ -32,7 +32,7 @@ export function create3dBodies(scene, world) {
   floorMesh.position.y = -floorThickness / 2;
   floorMesh.receiveShadow = true;
   scene.add(floorMesh);
-  // 2. Создаем физический куб
+  // Create physical cube
   const cubeGeo = new THREE.BoxGeometry(2, 2, 2);
   const cubeMat = new THREE.MeshStandardMaterial({
     color: 0x00ff00,
@@ -49,7 +49,7 @@ export function create3dBodies(scene, world) {
   world.createCollider(cubeColliderDesc, cubeBody);
   physicsPairs.push({ mesh: cubeMesh, body: cubeBody });
 
-  // 2. Создаем физический шар
+  // Create physical ball
   const sphereRadius = 0.3;
   const sphereGeo = new THREE.SphereGeometry(sphereRadius, 32, 32);
   const sphereMat = new THREE.MeshStandardMaterial({
@@ -73,11 +73,7 @@ export function create3dBodies(scene, world) {
 }
 
 export function createPlayer(world) {
-  // ===========================
-  // СОЗДАЕМ ФИЗИЧЕСКОГО ИГРОКА
-  // ===========================
-
-  // Физическое тело игрока (Капсула, чтобы не застревать в углах)
+  // Create phusical player (capsula)
   const playerBodyDesc = RAPIER.RigidBodyDesc.dynamic()
     .setTranslation(0, 2, 0)
     .lockRotations();

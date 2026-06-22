@@ -190,22 +190,22 @@ export async function loadAnimModel(
 
         // Debug capsule
         const halfHeight = 0.5;
-        const radius = 0.4;
-        const debugCapsule = new THREE.CapsuleGeometry(
-          radius,
-          halfHeight * 2,
-          8,
-          16,
-        );
-        const debugMaterial = new THREE.MeshBasicMaterial({
-          color: 0x00ff00,
-          transparent: true,
-          opacity: 0.4,
-          wireframe: false,
-        });
-        const debugCapsuleMesh = new THREE.Mesh(debugCapsule, debugMaterial);
-        scene.add(debugCapsuleMesh);
-        model.userData.debugMesh = debugCapsuleMesh;
+        const radius = 0.3;
+        // const debugCapsule = new THREE.CapsuleGeometry(
+        //   radius,
+        //   halfHeight * 2,
+        //   8,
+        //   16,
+        // );
+        // const debugMaterial = new THREE.MeshBasicMaterial({
+        //   color: 0x00ff00,
+        //   transparent: true,
+        //   opacity: 0.4,
+        //   wireframe: false,
+        // });
+        // const debugCapsuleMesh = new THREE.Mesh(debugCapsule, debugMaterial);
+        // scene.add(debugCapsuleMesh);
+        // model.userData.debugMesh = debugCapsuleMesh;
 
         const colliderDesc = RAPIER.ColliderDesc.capsule(halfHeight, radius);
         world.createCollider(colliderDesc, rigidBody);

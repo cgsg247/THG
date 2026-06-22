@@ -3,17 +3,19 @@ import * as THREE from "three";
 export let sound = null;
 export let backgroundSound = null;
 let soundPoint = null;
-let listener = null;
+export let listener = null;
 let isAudioInitialized = false;
 let isBackgroundAudioInitialized = false;
+
+export function initListener(camera) {
+  listener = new THREE.AudioListener();
+  camera.add(listener);
+}
 
 export function initAudio(scene, camera, audioPath, onProgress) {
   return new Promise((resolve, reject) => {
     if (listener) camera.remove(listener);
     if (soundPoint) scene.remove(soundPoint);
-
-    listener = new THREE.AudioListener();
-    camera.add(listener);
 
     soundPoint = new THREE.Object3D();
     soundPoint.position.set(0, 0, 0);
@@ -21,9 +23,6 @@ export function initAudio(scene, camera, audioPath, onProgress) {
 
     sound = new THREE.PositionalAudio(listener);
     sound.setVolume(1);
-    sound.setRefDistance(20);
-    sound.setMaxDistance(50);
-    sound.setRolloffFactor(1);
 
     soundPoint.add(sound);
 
@@ -62,8 +61,8 @@ export function initBackgroundAudio(scene, camera, audioPath, onProgress) {
     if (listener) camera.remove(listener);
     if (soundPoint) scene.remove(soundPoint);
 
-    listener = new THREE.AudioListener();
-    camera.add(listener);
+    //listener = new THREE.AudioListener();
+    //camera.add(listener);
 
     backgroundSound = new THREE.Audio(listener);
 
@@ -73,7 +72,6 @@ export function initBackgroundAudio(scene, camera, audioPath, onProgress) {
       audioPath,
       (buffer) => {
         backgroundSound.setBuffer(buffer);
-        backgroundSound.play();
         backgroundSound.setVolume(0.5);
         console.log(`background sound: ${audioPath} loaded`);
         resolve();

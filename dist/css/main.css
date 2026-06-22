@@ -5,7 +5,7 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background: url('../assets/backrooms0.jpg') center/cover no-repeat;
+  background: url("../assets/backrooms0.jpg") center/cover no-repeat;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -14,20 +14,30 @@
 
 #main-menu::before,
 #loading-screen::before {
-  content: '';
+  content: "";
   position: absolute;
   inset: 0;
   background: rgba(0, 0, 0, 0.7);
-  background-image: 
-    repeating-linear-gradient(0deg, rgba(0,0,0,0.1) 0px, rgba(0,0,0,0.1) 2px, transparent 2px, transparent 4px),
-    radial-gradient(circle at 50% 50%, rgba(0,0,0,0) 0%, rgba(0,0,0,0.6) 100%);
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      rgba(0, 0, 0, 0.1) 0px,
+      rgba(0, 0, 0, 0.1) 2px,
+      transparent 2px,
+      transparent 4px
+    ),
+    radial-gradient(
+      circle at 50% 50%,
+      rgba(0, 0, 0, 0) 0%,
+      rgba(0, 0, 0, 0.6) 100%
+    );
   pointer-events: none;
   z-index: 1;
 }
 
 #main-menu::after,
 #loading-screen::after {
-  content: '';
+  content: "";
   position: absolute;
   inset: 0;
   background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.06'/%3E%3C/svg%3E");
@@ -38,19 +48,27 @@
 }
 
 @keyframes static {
-  0% { opacity: 0.12; }
-  50% { opacity: 0.18; }
-  100% { opacity: 0.12; }
+  0% {
+    opacity: 0.12;
+  }
+  50% {
+    opacity: 0.18;
+  }
+  100% {
+    opacity: 0.12;
+  }
 }
 
 .scanlines {
   position: absolute;
   inset: 0;
-  background: repeating-linear-gradient(0deg, 
-    rgba(0,0,0,0.03) 0px, 
-    rgba(0,0,0,0.03) 2px, 
-    transparent 2px, 
-    transparent 4px);
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.03) 0px,
+    rgba(0, 0, 0, 0.03) 2px,
+    transparent 2px,
+    transparent 4px
+  );
   pointer-events: none;
   z-index: 3;
 }
@@ -70,7 +88,9 @@
   border: 2px solid #3a2c1b;
   border-radius: 8px;
   backdrop-filter: blur(6px);
-  box-shadow: 0 0 40px rgba(0,0,0,0.9), inset 0 0 30px rgba(0,0,0,0.8);
+  box-shadow:
+    0 0 40px rgba(0, 0, 0, 0.9),
+    inset 0 0 30px rgba(0, 0, 0, 0.8);
   max-width: 600px;
   width: 90%;
 }
@@ -82,22 +102,43 @@
   letter-spacing: 8px;
   text-transform: uppercase;
   color: #d4af37;
-  text-shadow: 
+  text-shadow:
     0 0 10px #d4af37,
     0 0 20px #d4af37,
     0 0 40px #8b0000,
     0 0 80px #8b0000;
   animation: glitch 3s infinite;
   margin-bottom: 2rem;
-  font-family: 'Courier New', monospace;
+  font-family: "Courier New", monospace;
 }
 
 @keyframes glitch {
-  0%, 100% { text-shadow: 2px 0 #ff0000, -2px 0 #00ffff; }
-  20% { text-shadow: -3px 0 #ff0000, 3px 0 #00ffff; }
-  40% { text-shadow: 3px 0 #ff0000, -3px 0 #00ffff; }
-  60% { text-shadow: -2px 0 #ff0000, 2px 0 #00ffff; }
-  80% { text-shadow: 2px 0 #ff0000, -2px 0 #00ffff; }
+  0%,
+  100% {
+    text-shadow:
+      2px 0 #ff0000,
+      -2px 0 #00ffff;
+  }
+  20% {
+    text-shadow:
+      -3px 0 #ff0000,
+      3px 0 #00ffff;
+  }
+  40% {
+    text-shadow:
+      3px 0 #ff0000,
+      -3px 0 #00ffff;
+  }
+  60% {
+    text-shadow:
+      -2px 0 #ff0000,
+      2px 0 #00ffff;
+  }
+  80% {
+    text-shadow:
+      2px 0 #ff0000,
+      -2px 0 #00ffff;
+  }
 }
 
 .game-title::before,
@@ -124,15 +165,26 @@
 }
 
 @keyframes glitch-offset {
-  0% { transform: translate(0); }
-  20% { transform: translate(-2px, 2px); }
-  40% { transform: translate(2px, -2px); }
-  60% { transform: translate(-1px, 3px); }
-  80% { transform: translate(3px, -1px); }
-  100% { transform: translate(0); }
+  0% {
+    transform: translate(0);
+  }
+  20% {
+    transform: translate(-2px, 2px);
+  }
+  40% {
+    transform: translate(2px, -2px);
+  }
+  60% {
+    transform: translate(-1px, 3px);
+  }
+  80% {
+    transform: translate(3px, -1px);
+  }
+  100% {
+    transform: translate(0);
+  }
 }
 
-/* ===== КНОПКИ ===== */
 .start-btn,
 .pause-btn {
   font-size: 1.3rem;
@@ -145,22 +197,29 @@
   cursor: pointer;
   text-transform: uppercase;
   letter-spacing: 4px;
-  font-family: 'Courier New', monospace;
+  font-family: "Courier New", monospace;
   transition: all 0.15s ease;
-  box-shadow: 0 0 15px rgba(0,0,0,0.8);
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.8);
   position: relative;
   overflow: hidden;
 }
 
 .start-btn::before,
 .pause-btn::before {
-  content: '';
+  content: "";
   position: absolute;
   top: -50%;
   left: -50%;
   width: 200%;
   height: 200%;
-  background: conic-gradient(from 0deg, transparent, rgba(212, 175, 55, 0.1), transparent, rgba(212, 175, 55, 0.1), transparent);
+  background: conic-gradient(
+    from 0deg,
+    transparent,
+    rgba(212, 175, 55, 0.1),
+    transparent,
+    rgba(212, 175, 55, 0.1),
+    transparent
+  );
   animation: rotate 4s linear infinite;
   opacity: 0;
   transition: opacity 0.3s;
@@ -176,7 +235,9 @@
   background: #2a1f0f;
   border-color: #8b0000;
   color: #ff0000;
-  box-shadow: 0 0 30px rgba(139, 0, 0, 0.7), inset 0 0 20px rgba(139, 0, 0, 0.3);
+  box-shadow:
+    0 0 30px rgba(139, 0, 0, 0.7),
+    inset 0 0 20px rgba(139, 0, 0, 0.3);
   transform: scale(1.02);
 }
 
@@ -186,11 +247,14 @@
 }
 
 @keyframes rotate {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
-/* ===== ПАУЗА ===== */
 #pause-menu {
   position: fixed;
   top: 0;
@@ -206,14 +270,16 @@
 }
 
 #pause-menu::before {
-  content: '';
+  content: "";
   position: absolute;
   inset: 0;
-  background: repeating-linear-gradient(0deg, 
-    rgba(0,0,0,0.05) 0px, 
-    rgba(0,0,0,0.05) 2px, 
-    transparent 2px, 
-    transparent 4px);
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.05) 0px,
+    rgba(0, 0, 0, 0.05) 2px,
+    transparent 2px,
+    transparent 4px
+  );
   pointer-events: none;
 }
 
@@ -223,7 +289,7 @@
   border: 2px solid #3a2c1b;
   border-radius: 8px;
   text-align: center;
-  box-shadow: 0 0 60px rgba(0,0,0,0.9);
+  box-shadow: 0 0 60px rgba(0, 0, 0, 0.9);
   backdrop-filter: blur(4px);
   min-width: 300px;
   position: relative;
@@ -234,7 +300,7 @@
   color: #d4af37;
   text-shadow: 0 0 20px #8b0000;
   letter-spacing: 8px;
-  font-family: 'Courier New', monospace;
+  font-family: "Courier New", monospace;
   margin-bottom: 2rem;
 }
 
@@ -260,11 +326,11 @@
 .loading-progress-wrap {
   width: 100%;
   height: 6px;
-  background: rgba(255,255,255,0.08);
+  background: rgba(255, 255, 255, 0.08);
   border-radius: 3px;
   overflow: hidden;
   margin: 25px 0 12px;
-  box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
 }
 
 .loading-progress-bar {
@@ -280,7 +346,7 @@
   font-size: 20px;
   font-weight: bold;
   color: #d4af37;
-  font-family: 'Courier New', monospace;
+  font-family: "Courier New", monospace;
   margin-top: 6px;
   text-shadow: 0 0 10px #000;
 }
@@ -288,7 +354,7 @@
 .loading-status {
   font-size: 14px;
   color: #aaa;
-  font-family: 'Courier New', monospace;
+  font-family: "Courier New", monospace;
   margin-top: 10px;
   min-height: 24px;
   letter-spacing: 2px;
@@ -296,22 +362,51 @@
 }
 
 @keyframes flicker {
-  0%, 100% { opacity: 1; }
-  3% { opacity: 0.6; }
-  6% { opacity: 1; }
-  7% { opacity: 0.8; }
-  8% { opacity: 1; }
-  9% { opacity: 0.3; }
-  10% { opacity: 1; }
-  50% { opacity: 1; }
-  55% { opacity: 0.7; }
-  56% { opacity: 1; }
-  60% { opacity: 0.9; }
-  61% { opacity: 1; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  3% {
+    opacity: 0.6;
+  }
+  6% {
+    opacity: 1;
+  }
+  7% {
+    opacity: 0.8;
+  }
+  8% {
+    opacity: 1;
+  }
+  9% {
+    opacity: 0.3;
+  }
+  10% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 1;
+  }
+  55% {
+    opacity: 0.7;
+  }
+  56% {
+    opacity: 1;
+  }
+  60% {
+    opacity: 0.9;
+  }
+  61% {
+    opacity: 1;
+  }
 }
 
-.game-title, .loading-title, .pause-container h1 {
-  animation: flicker 6s infinite, glitch 3s infinite;
+.game-title,
+.loading-title,
+.pause-container h1 {
+  animation:
+    flicker 6s infinite,
+    glitch 3s infinite;
 }
 
 .flicker {
@@ -319,13 +414,17 @@
 }
 
 @media (max-width: 600px) {
-  .menu-container, .loading-content, .pause-container {
+  .menu-container,
+  .loading-content,
+  .pause-container {
     padding: 20px 30px;
   }
-  .game-title, .loading-title {
+  .game-title,
+  .loading-title {
     font-size: 2.5rem;
   }
-  .start-btn, .pause-btn {
+  .start-btn,
+  .pause-btn {
     font-size: 1rem;
     padding: 10px 20px;
   }
@@ -346,28 +445,28 @@
 }
 
 #story-screen::before {
-  content: '';
+  content: "";
   position: absolute;
   inset: 0;
-  background: url('../assets/letter_texture.jpg') center/cover no-repeat;
+  background: url("../assets/letter_texture.jpg") center/cover no-repeat;
   opacity: 0.15;
   pointer-events: none;
 }
 
 .story-content {
   position: relative;
-  max-width: 700px;       
+  max-width: 700px;
   width: 90%;
-  max-height: 85vh;          
-  overflow-y: auto;        
+  max-height: 85vh;
+  overflow-y: auto;
   background: rgba(20, 15, 10, 0.92);
   border: 2px solid #3a2c1b;
   border-radius: 8px;
   padding: 30px 40px;
-  box-shadow: 0 0 60px rgba(0,0,0,0.9);
+  box-shadow: 0 0 60px rgba(0, 0, 0, 0.9);
   text-align: center;
   color: #d4c9b0;
-  font-family: 'Courier New', monospace;
+  font-family: "Courier New", monospace;
   line-height: 1.7;
 }
 
@@ -375,7 +474,7 @@
   width: 8px;
 }
 .story-content::-webkit-scrollbar-track {
-  background: rgba(0,0,0,0.4);
+  background: rgba(0, 0, 0, 0.4);
   border-radius: 4px;
 }
 .story-content::-webkit-scrollbar-thumb {
@@ -413,11 +512,11 @@
   border: 2px solid #3a2c1b;
   border-radius: 4px;
   font-size: 1.2rem;
-  font-family: 'Courier New', monospace;
+  font-family: "Courier New", monospace;
   cursor: pointer;
   transition: all 0.2s;
   letter-spacing: 2px;
-  margin-top: 20px;         
+  margin-top: 20px;
 }
 
 .story-btn:hover {
@@ -427,7 +526,6 @@
   box-shadow: 0 0 30px rgba(139, 0, 0, 0.5);
 }
 
-/* ===== ЭКРАН ВИДЕО ===== */
 #video-screen {
   position: fixed;
   top: 0;
@@ -456,7 +554,7 @@
   border: 1px solid #666;
   border-radius: 4px;
   font-size: 1.2rem;
-  font-family: 'Courier New', monospace;
+  font-family: "Courier New", monospace;
   cursor: pointer;
   z-index: 5001;
   transition: 0.2s;
@@ -480,4 +578,83 @@
 #story-video::-webkit-media-controls-current-time-display,
 #story-video::-webkit-media-controls-time-remaining-display {
   color: #d4af37;
+}
+
+#lose-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.9);
+  backdrop-filter: blur(10px);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 6000;
+}
+
+#lose-screen::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at center,
+    rgba(139, 0, 0, 0.3),
+    transparent 70%
+  );
+  pointer-events: none;
+}
+
+.lose-container {
+  background: rgba(10, 5, 5, 0.95);
+  padding: 50px 60px;
+  border: 3px solid #8b0000;
+  border-radius: 12px;
+  text-align: center;
+  box-shadow: 0 0 80px rgba(139, 0, 0, 0.8);
+  max-width: 500px;
+  width: 90%;
+  position: relative;
+  z-index: 1;
+}
+
+.lose-container h1 {
+  font-size: 3.5rem;
+  color: #ff0000;
+  text-shadow:
+    0 0 30px #ff0000,
+    0 0 60px #8b0000;
+  font-family: "Courier New", monospace;
+  letter-spacing: 6px;
+  margin-bottom: 10px;
+}
+
+.lose-container p {
+  font-size: 1.2rem;
+  color: #cccccc;
+  font-family: "Courier New", monospace;
+  margin-bottom: 30px;
+  opacity: 0.8;
+}
+
+.lose-btn {
+  padding: 16px 50px;
+  background: #1a0a0a;
+  color: #ff4444;
+  border: 2px solid #8b0000;
+  border-radius: 6px;
+  font-size: 1.2rem;
+  font-family: "Courier New", monospace;
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+}
+
+.lose-btn:hover {
+  background: #8b0000;
+  color: #ffffff;
+  box-shadow: 0 0 40px rgba(139, 0, 0, 0.6);
+  transform: scale(1.05);
 }

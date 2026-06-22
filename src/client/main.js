@@ -4,11 +4,16 @@ import {
   responseAnimModel,
   enemyAnimModel,
   updateEnemyPhysics,
-  unEnemyAnimModel,
 } from "./model_load.js";
-import { isGameActive, isPaused, menuInit, gameMenu } from "./menu.js";
+import {
+  isGameActive,
+  isPaused,
+  menuInit,
+  gameMenu,
+  setIsGameActive,
+  setIsPaused,
+} from "./menu.js";
 import { MovePlayer } from "./player_move.js";
-import Stats from "stats.js";
 import {
   createFlashlight,
   createFlashlightUI,
@@ -16,9 +21,9 @@ import {
   updateFlashlightPosition,
 } from "./flashlight.js";
 import { enableLight } from "./light.js";
-import { createPlayer, create3dBodies, physicsPairs } from "./physic_bodies.js";
+import { createPlayer, physicsPairs } from "./physic_bodies.js";
 import { initCamera, updateSpectatorCamera } from "./camera.js";
-import { initUI, addUIParts, PARAMS, jumpParams, ENEMY_PARAMS } from "./ui.js";
+import { PARAMS, jumpParams } from "./ui.js";
 import { keyboardParser, keys } from "./keyboard.js";
 import { controls, pointerLockControl } from "./pointer_lock.js";
 import { startGameLoading } from "./loading.js";
@@ -26,33 +31,19 @@ import { showStory, startVideo } from "./story.js";
 import { Enemy } from "./enemy.js";
 import * as YUKA from "yuka";
 import {
-  backgroundSound,
-  sound,
+  initListener,
   startAudio,
   startBackgroundAudio,
   stopAudio,
   stopBackgroundAudio,
 } from "./audio.js";
+import { checkLose, isGameOver, resetGameOver } from "./end.js";
 
 RAPIER.init({}).then(() => {
   runGame(RAPIER);
 });
 
 function runGame(RAPIER) {
-  // Initializing statistics counter
-  const stats = new Stats();
-  Array.from(stats.dom.children).forEach((canvas) => {
-    canvas.style.display = "block";
-    canvas.style.float = "left";
-    canvas.style.marginRight = "5px";
-  });
-
-  stats.dom.style.top = "10px";
-  stats.dom.style.left = "10px";
-  stats.dom.style.width = "auto";
-
-  document.body.appendChild(stats.dom);
-
   // Creating a physical world with gravity
   const g = -9.80665; // free-fall acceleration
   const gravity = { x: 0.0, y: g, z: 0.0 };
@@ -70,8 +61,6 @@ function runGame(RAPIER) {
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFShadowMap;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping; // или THREE.ReinhardToneMapping
-  renderer.toneMappingExposure = 0.8;
 
   document.body.appendChild(renderer.domElement);
 
@@ -81,19 +70,18 @@ function runGame(RAPIER) {
   enableFlashlightUI();
   enableLight(scene);
 
-  // Creating physical 3D bodies (cube and sphere)
-  // create3dBodies(scene, world);
-
   // Create physical player
   const playerBody = createPlayer(world);
+
+  // Initialization listener
+  initListener(camera);
 
   // Handling Pointer Lock Events
   pointerLockControl(camera);
 
-  let enemy = null;
-
   gameMenu.onStart(async () => {
     stopBackgroundAudio();
+    resetGameOver();
     gameMenu.hideMain();
     document.getElementById("main-menu").style.display = "none";
 
@@ -103,25 +91,28 @@ function runGame(RAPIER) {
           await startGameLoading(scene, world, camera);
           startAudio();
         } catch (error) {
-          console.error("Ошибка: ", error);
+          console.error("Error: ", error);
         }
       });
     });
+    // try {
+    //   await startGameLoading(scene, world, camera);
+    //   startAudio();
+    // } catch (error) {
+    //   console.error("Error: ", error);
+    // }
   });
 
   // Menu initialization
-  menuInit(playerBody, controls);
-  startBackgroundAudio();
-
-  // =============
-  // UI SETTINGS
-  // =============
-
-  // Initialization UI TweakPane
-  initUI(controls);
-
-  // Adding a binding to UI TweakPane
-  addUIParts();
+  menuInit(playerBody, controls, scene, camera);
+  // Lose menu button
+  document.getElementById("lose-menu-btn")?.addEventListener("click", () => {
+    resetGameOver();
+    setIsGameActive(false);
+    setIsPaused(false);
+    if (controls.isLocked) controls.unlock();
+    gameMenu.showMain(scene);
+  });
 
   // Timer
   const timer = new THREE.Timer();
@@ -139,7 +130,7 @@ function runGame(RAPIER) {
   let canJump = true;
 
   const entityManager = new YUKA.EntityManager();
-  let yukaEnemy = null;
+  let enemy = null;
 
   // Game loop
   function animate() {
@@ -148,11 +139,13 @@ function runGame(RAPIER) {
     timer.update();
     const delta = timer.getDelta();
 
+    if (isGameOver()) {
+      renderer.render(scene, camera);
+      return;
+    }
+
     if (isGameActive && !isPaused) {
-      stats.dom.style.display = "block";
-      stats.begin();
     } else {
-      stats.dom.style.display = "none";
       renderer.render(scene, camera);
       return;
     }
@@ -173,15 +166,20 @@ function runGame(RAPIER) {
       pair.mesh.quaternion.set(rotation.x, rotation.y, rotation.z, rotation.w);
     });
 
-    if (enemyAnimModel && !yukaEnemy) {
-      yukaEnemy = new Enemy(enemyAnimModel, world, 1.5);
-      entityManager.add(yukaEnemy);
+    if (enemyAnimModel && !enemy) {
+      enemy = new Enemy(enemyAnimModel, world, 7);
+      entityManager.add(enemy);
     }
 
-    if (yukaEnemy) {
-      yukaEnemy.updateTargetPosition(camera.position);
+    if (enemy) {
+      enemy.updateTargetPosition(camera.position);
       entityManager.update(delta);
-      yukaEnemy.syncPhysicsAndGraphics();
+      enemy.syncPhysicsAndGraphics(camera.position);
+    }
+
+    if (checkLose(controls)) {
+      renderer.render(scene, camera);
+      return;
     }
 
     // Update animated model
@@ -211,8 +209,6 @@ function runGame(RAPIER) {
     }
 
     renderer.render(scene, camera);
-
-    stats.end();
   }
 
   // Resizing window

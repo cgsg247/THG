@@ -24,7 +24,7 @@ export function initUI(controls) {
 
 // Player speed ​​parametrs
 export const PARAMS = {
-  speed: 6,
+  speed: 4,
 };
 
 // Player jump parameters

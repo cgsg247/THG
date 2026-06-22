@@ -61,7 +61,6 @@ export function keyboardParser(controls) {
       keys.f2 = ActiveKeyF2;
       e.preventDefault();
       spectatorMode(controls);
-      console.log("F2 click!");
     }
   });
   window.addEventListener("blur", () => {
