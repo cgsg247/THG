@@ -13,7 +13,13 @@ import {
   setIsGameActive,
   setIsPaused,
 } from "./menu.js";
-import { MovePlayer } from "./player_move.js";
+import {
+  MovePlayer,
+  setGameStartTime,
+  resetWinState,
+  winTime,
+  gameStartTime,
+} from "./player_move.js";
 import {
   createFlashlight,
   createFlashlightUI,
@@ -45,18 +51,18 @@ RAPIER.init({}).then(() => {
 });
 
 function runGame(RAPIER) {
-  const stats = new Stats();
-  Array.from(stats.dom.children).forEach((canvas) => {
-    canvas.style.display = "block";
-    canvas.style.float = "left";
-    canvas.style.marginRight = "5px";
-  });
+  // const stats = new Stats();
+  // Array.from(stats.dom.children).forEach((canvas) => {
+  //   canvas.style.display = "block";
+  //   canvas.style.float = "left";
+  //   canvas.style.marginRight = "5px";
+  // });
 
-  stats.dom.style.top = "10px";
-  stats.dom.style.left = "10px";
-  stats.dom.style.width = "auto";
+  // stats.dom.style.top = "10px";
+  // stats.dom.style.left = "10px";
+  // stats.dom.style.width = "auto";
 
-  document.body.appendChild(stats.dom);
+  // document.body.appendChild(stats.dom);
   // Creating a physical world with gravity
   const g = -9.80665; // free-fall acceleration
   const gravity = { x: 0.0, y: g, z: 0.0 };
@@ -92,9 +98,18 @@ function runGame(RAPIER) {
   // Handling Pointer Lock Events
   pointerLockControl(camera);
 
+  let winCube = null;
+
   gameMenu.onStart(async () => {
     stopBackgroundAudio();
     resetGameOver();
+
+    setGameStartTime();
+    resetWinState();
+    if (winCube) {
+      scene.remove(winCube);
+      winCube = null;
+    }
     gameMenu.hideMain();
     const gameOverScreen = document.getElementById("game-over-screen");
     if (gameOverScreen) gameOverScreen.style.display = "none";
@@ -135,8 +150,8 @@ function runGame(RAPIER) {
   const frontVector = new THREE.Vector3();
   const sideVector = new THREE.Vector3();
 
-  initUI(controls);
-  addUIParts();
+  // initUI(controls);
+  // addUIParts();
 
   // Can jump flag
   let canJump = true;
@@ -156,19 +171,33 @@ function runGame(RAPIER) {
       return;
     }
 
-    // if (isGameActive && !isPaused) {
-    // } else {
-    //   renderer.render(scene, camera);
-    //   return;
-    // }
     if (isGameActive && !isPaused) {
-      stats.dom.style.display = "block";
-      stats.begin();
+      if (!isGameOver() && winCube === null) {
+        const currentTime = performance.now() / 1000;
+        if (currentTime - gameStartTime >= winTime) {
+          const geometry = new THREE.BoxGeometry(2, 2, 2);
+          const material = new THREE.MeshBasicMaterial({
+            color: 0x00ff00,
+            transparent: true,
+            opacity: 0.5,
+          });
+          winCube = new THREE.Mesh(geometry, material);
+          winCube.position.set(-50, 1, -4);
+          scene.add(winCube);
+        }
+      }
     } else {
-      stats.dom.style.display = "none";
       renderer.render(scene, camera);
       return;
     }
+    // if (isGameActive && !isPaused) {
+    //   stats.dom.style.display = "block";
+    //   stats.begin();
+    // } else {
+    //   stats.dom.style.display = "none";
+    //   renderer.render(scene, camera);
+    //   return;
+    // }
 
     // Update the flashlight direction
     if (isGameActive && !isPaused) {
@@ -187,7 +216,7 @@ function runGame(RAPIER) {
     });
 
     if (enemyAnimModel && !enemy) {
-      enemy = new Enemy(enemyAnimModel, world, 3.5);
+      enemy = new Enemy(enemyAnimModel, world, 10.5);
       entityManager.add(enemy);
     }
 
@@ -229,7 +258,7 @@ function runGame(RAPIER) {
     }
 
     renderer.render(scene, camera);
-    stats.end();
+    // stats.end();
   }
 
   // Resizing window

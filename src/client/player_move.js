@@ -1,6 +1,6 @@
-import { isGameActive } from "./menu";
-import RAPIER from "@dimforge/rapier3d-compat";
-import { playerCollider } from "./physic_bodies.js";
+import { isGameActive, isPaused } from "./menu";
+// import RAPIER from "@dimforge/rapier3d-compat";
+// import { playerCollider } from "./physic_bodies.js";
 
 // function isGrounded(RAPIER, world, playerBody, jumpParams) {
 //   const pos = playerBody.translation();
@@ -18,16 +18,16 @@ import { playerCollider } from "./physic_bodies.js";
 // }
 
 export let isWin = false;
-let gameStartTime = 0;
+export let gameStartTime = 0;
 let winChecked = false;
 
-const winZone = {
-  xMin: -5,
-  xMax: 5,
-  zMin: -5,
-  zMax: 5,
+export const winZone = {
+  xMin: -50 - 0.7,
+  xMax: -50 + 0.7,
+  zMin: -4 - 0.7,
+  zMax: -4 + 0.7,
 };
-const winTime = 90;
+export const winTime = 90;
 
 export function setGameStartTime() {
   gameStartTime = performance.now() / 1000;
